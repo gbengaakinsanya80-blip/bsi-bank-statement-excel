@@ -1,0 +1,581 @@
+Here's a comprehensive PRD-style prompt you can give to OpenCode to build a professional, production-quality application.
+
+# PRD: AI Bank Statement to Excel Converter
+
+## Project Name
+
+**Bank Statement Intelligence (BSI)**
+
+## Objective
+
+Build a desktop and web application that intelligently reads PDF bank statements from any bank, accurately extracts every transaction without skipping a single line, and converts the statement into a clean, structured Excel workbook suitable for accounting, auditing, reconciliation, and financial analysis.
+
+This is NOT a simple PDF converter.
+
+It is an AI-powered statement parser that understands the layout of each bank statement.
+
+---
+
+# Primary Goal
+
+The application must achieve over **99.9% extraction accuracy**.
+
+It must never skip:
+
+* Beginning Balance
+* Value Date
+* Transaction Date
+* Description
+* Reference Numbers
+* Debit Amount
+* Credit Amount
+* Running Balance
+
+Every transaction must appear exactly once.
+
+---
+
+# Banks Supported
+
+The system should automatically recognize statements from:
+
+* First Bank
+* Access Bank
+* Zenith Bank
+* GTBank
+* UBA
+* Fidelity
+* FCMB
+* Stanbic IBTC
+* Sterling
+* Union Bank
+* Wema
+* Keystone
+* Ecobank
+* Polaris
+* Providus
+* Moniepoint
+* Kuda
+* Any Nigerian Bank
+* International Banks
+
+The architecture must allow adding new bank templates without changing the core application.
+
+---
+
+# Core Features
+
+## 1. Intelligent PDF Reader
+
+Support:
+
+* Text PDF
+* Scanned PDF
+* Rotated pages
+* Poor-quality scans
+* Colored scans
+* Black-and-white scans
+* Multi-page statements
+* 500+ page statements
+
+Use OCR automatically whenever needed.
+
+Recommended libraries:
+
+* pdfplumber
+* PyMuPDF
+* pdfminer
+* PaddleOCR
+* Tesseract OCR
+* OpenCV
+
+The application should decide automatically which extraction method gives the best result.
+
+---
+
+## 2. AI Layout Detection
+
+Instead of relying on fixed coordinates, the application should study the statement and determine:
+
+* Header positions
+* Table structure
+* Column boundaries
+* Page layout
+* Fonts
+* Alignment
+
+Even if two banks use different layouts, the system should still extract correctly.
+
+---
+
+## 3. Transaction Extraction
+
+Extract every transaction with these columns:
+
+Beginning Balance
+
+Date
+
+Value Date
+
+Description
+
+Reference Number
+
+Debit (Pay Out)
+
+Credit (Pay In)
+
+Running Balance
+
+Currency
+
+Branch (if available)
+
+Channel
+
+Instrument Number
+
+Transaction Type
+
+Page Number
+
+Line Number
+
+---
+
+## 4. Description Cleanup
+
+Clean descriptions by:
+
+Removing unnecessary spaces
+
+Joining broken text
+
+Keeping important references
+
+Never truncating descriptions
+
+Example
+
+Instead of:
+
+POS
+
+PURCHASE
+
+SHOPRITE
+
+ABUJA
+
+Return
+
+POS PURCHASE SHOPRITE ABUJA
+
+---
+
+## 5. Multi-line Transaction Detection
+
+Many statements split descriptions across two or three lines.
+
+The application must intelligently merge them.
+
+Example
+
+01/03/26
+
+POS PURCHASE
+
+SHOPRITE
+
+ABUJA
+
+Debit 15,000
+
+Should become one transaction.
+
+---
+
+## 6. Beginning Balance Detection
+
+Detect:
+
+Opening Balance
+
+Beginning Balance
+
+Balance B/F
+
+Brought Forward
+
+Opening Ledger Balance
+
+This becomes the first record in Excel.
+
+---
+
+## 7. Ending Balance Validation
+
+Verify:
+
+Opening Balance
+
+*
+
+Credits
+
+*
+
+Debits
+
+=
+
+Closing Balance
+
+If not equal,
+
+Flag an error.
+
+---
+
+## 8. Duplicate Detection
+
+Never duplicate transactions.
+
+Each transaction should appear once.
+
+---
+
+## 9. Missing Transaction Detection
+
+Detect skipped rows.
+
+If the statement contains 950 transactions,
+
+Excel must contain 950 transactions.
+
+Not 948.
+
+Not 949.
+
+Exactly 950.
+
+---
+
+## 10. Running Balance Validation
+
+For every transaction:
+
+Previous Balance
+
+*
+
+Credit
+
+*
+
+Debit
+
+=
+
+Current Balance
+
+Highlight any mismatch.
+
+---
+
+# Excel Output
+
+Generate a professional workbook.
+
+Worksheet 1
+
+Transactions
+
+Columns
+
+Beginning Balance
+
+Date
+
+Value Date
+
+Description
+
+Reference
+
+Debit
+
+Credit
+
+Balance
+
+Worksheet 2
+
+Summary
+
+Opening Balance
+
+Closing Balance
+
+Total Credits
+
+Total Debits
+
+Number of Transactions
+
+Largest Debit
+
+Largest Credit
+
+Average Debit
+
+Average Credit
+
+Worksheet 3
+
+Validation
+
+Missing Rows
+
+Balance Errors
+
+Duplicate Entries
+
+Unreadable Transactions
+
+OCR Confidence
+
+Worksheet 4
+
+Charts
+
+Monthly Cash Flow
+
+Daily Cash Flow
+
+Income vs Expense
+
+Running Balance Trend
+
+---
+
+# Search Features
+
+Allow searching by:
+
+Date
+
+Description
+
+Reference
+
+Amount
+
+Debit
+
+Credit
+
+Balance
+
+Keyword
+
+---
+
+# Filters
+
+Today
+
+Yesterday
+
+This Month
+
+Custom Dates
+
+Amount Range
+
+Debit Only
+
+Credit Only
+
+Keyword Search
+
+---
+
+# Export
+
+Export to:
+
+Excel (.xlsx)
+
+CSV
+
+PDF Summary
+
+JSON
+
+SQLite Database
+
+---
+
+# User Interface
+
+Modern banking-style interface.
+
+Drag-and-drop PDF upload.
+
+Progress bar during processing.
+
+Preview extracted transactions before export.
+
+Dark mode and light mode.
+
+Responsive design.
+
+---
+
+# AI Error Detection
+
+Automatically detect:
+
+Missing dates
+
+Missing balances
+
+Unreadable text
+
+Broken transactions
+
+Wrong OCR
+
+Misaligned columns
+
+Duplicate lines
+
+Balance inconsistencies
+
+Provide suggested fixes where possible.
+
+---
+
+# Performance
+
+Support:
+
+1 page in under 2 seconds.
+
+500-page statements in under 3 minutes.
+
+Use multithreading where appropriate.
+
+---
+
+# Technology Stack
+
+Frontend
+
+Next.js
+
+TypeScript
+
+Tailwind CSS
+
+Shadcn UI
+
+Backend
+
+Python
+
+FastAPI
+
+PDF Processing
+
+pdfplumber
+
+PyMuPDF
+
+pdfminer.six
+
+OCR
+
+PaddleOCR (primary)
+
+Tesseract (fallback)
+
+Image Processing
+
+OpenCV
+
+Pillow
+
+Data Processing
+
+pandas
+
+openpyxl
+
+NumPy
+
+Database
+
+Supabase
+
+SQLite (offline cache)
+
+Deployment
+
+Vercel (frontend)
+
+Render (backend)
+
+GitHub
+
+---
+
+# Quality Assurance
+
+Create an automated testing suite with at least 200 sample bank statements from different banks and layouts.
+
+Measure:
+
+Extraction accuracy
+
+OCR accuracy
+
+Balance validation
+
+Missing transaction detection
+
+Duplicate detection
+
+Performance
+
+The application should target:
+
+99.9% field extraction accuracy.
+
+100% transaction count accuracy.
+
+Zero duplicated rows.
+
+Zero skipped transactions.
+
+---
+
+# Future Enhancements
+
+Add automatic transaction categorization (Salary, Transfer, POS, ATM, Charges, Interest, Bills, etc.).
+
+Support batch processing of multiple statements.
+
+Create dashboards with spending analysis and cash flow insights.
+
+Allow users to define custom extraction rules for unusual statement formats.
+
+Build an AI learning engine that improves extraction accuracy as more bank statement templates are processed.
+
+## Success Criteria
+
+The final application should produce an Excel file that is as clean and accurate as if a professional accountant manually typed every transaction, while completing the task in minutes instead of hours. It must preserve all financial data exactly as shown on the original statement, validate balances mathematically, and clearly report any uncertainty instead of silently omitting transactions.
+
+To make this even more powerful, you can ask OpenCode to build it using a **hybrid AI extraction engine** that combines rule-based parsing, OCR, computer vision, and a large language model for layout understanding. This approach is significantly more robust than relying on OCR or PDF parsing alone and is better at handling messy, scanned, or inconsistent bank statements.

@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: bsi-backend
+    runtime: python
+    plan: starter
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port 10000 --workers 1
+    healthCheckPath: /api/health
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.13.1"
+      - key: BSI_DATA_DIR
+        value: /opt/render/project/src/backend/data
+      - key: BSI_MAX_WORKERS
+        value: "1"
