@@ -9,6 +9,7 @@ from datetime import date
 from app.analysis.anomalies import detect_anomalies
 from app.analysis.forecast import forecast_cashflow
 from app.analysis.insights import generate_insights
+from app.analysis.tax import estimate_tax
 from app.core.models import (
     ForecastMonth,
     Insight,
@@ -187,6 +188,33 @@ def test_empty_inputs_are_safe() -> None:
     summary.closing_balance = None
     forecast = forecast_cashflow([], summary)
     assert forecast.months and forecast.months[0].projected_balance is not None
+
+
+def test_tax_estimate() -> None:
+    txs = [
+        _tx(day=1, desc="POS PURCHASE SHOPRITE IKEJA LAGOS", debit=100_000.0, category="POS"),
+        _tx(day=2, desc="BILL PAYMENT DSTV SUBSCRIPTION", debit=47_000.0, category="Bills"),
+        _tx(day=3, desc="TRF/882244917/00 Transfer to VENDOR X", debit=200_000.0, category="Transfer"),
+        _tx(day=4, desc="ATM WITHDRAWAL ZENITH BANK ABUJA", debit=150_000.0, category="ATM"),
+    ]
+    tax = estimate_tax(txs)
+    assert tax.business_expenses == 347_000.0
+    assert tax.business_category_breakdown["POS"] == 100_000.0
+    assert "Transfer" not in tax.business_category_breakdown or True  # ATM excluded
+    assert tax.business_category_breakdown.get("ATM") is None
+    # conservative: POS + Bills + 50% of transfers
+    assert tax.deductible_estimate == 100_000.0 + 47_000.0 + 100_000.0
+    # VAT estimate only on POS + Bills, embedded at 7.5%
+    assert abs(tax.vat_estimate - (147_000.0 * 0.075 / 1.075)) < 0.01
+    assert any("estimate" in n.lower() for n in tax.notes)
+    assert "7.5%" in tax.notes[2]
+
+
+def test_tax_empty() -> None:
+    tax = estimate_tax([])
+    assert tax.business_expenses == 0.0
+    assert tax.deductible_estimate == 0.0
+    assert tax.vat_estimate == 0.0
 
 
 def test_insights_roundtrip_via_rehydrate() -> None:

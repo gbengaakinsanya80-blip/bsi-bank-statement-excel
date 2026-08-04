@@ -1,5 +1,5 @@
-"""Excel workbook export: Transactions, Summary, Validation and Charts sheets
-with native Excel charts."""
+"""Excel workbook export: Transactions, Summary, Validation, Insights and
+Charts sheets with native Excel charts."""
 
 from __future__ import annotations
 
@@ -10,7 +10,7 @@ from openpyxl.chart import BarChart, LineChart, PieChart, Reference
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 from openpyxl.utils import get_column_letter
 
-from app.core.models import ParsedStatement, Transaction
+from app.core.models import InsightsReport, ParsedStatement, Transaction
 
 HEADER_FILL = PatternFill("solid", fgColor="1F4E79")
 ALT_FILL = PatternFill("solid", fgColor="EAF1F8")
@@ -33,6 +33,7 @@ def build_excel(parsed: ParsedStatement) -> BytesIO:
     _write_transactions(wb.active, parsed)
     _write_summary(wb.create_sheet("Summary"), parsed)
     _write_validation(wb.create_sheet("Validation"), parsed)
+    _write_insights(wb.create_sheet("Insights"), parsed)
     _write_charts(wb.create_sheet("Charts"), parsed)
 
     bio = BytesIO()
@@ -155,6 +156,86 @@ def _write_validation(ws, parsed: ParsedStatement) -> None:
         ws.cell(row=len(issues) + 3, column=1, value="OCR Confidence").font = Font(bold=True)
         ws.cell(row=len(issues) + 3, column=2, value=parsed.validation.ocr_confidence)
     _autosize(ws, headers)
+
+
+def _write_insights(ws, parsed: ParsedStatement) -> None:
+    ins: InsightsReport = parsed.insights
+    row = 1
+
+    def section(title: str) -> None:
+        nonlocal row
+        ws.cell(row=row, column=1, value=title).font = Font(bold=True, size=12, color="1F4E79")
+        row += 1
+
+    def kv(label: str, value) -> None:
+        nonlocal row
+        ws.cell(row=row, column=1, value=label).font = Font(bold=True)
+        ws.cell(row=row, column=2, value=value)
+        if isinstance(value, float):
+            ws.cell(row=row, column=2).number_format = MONEY
+        row += 1
+
+    def insights_block(title: str, items) -> None:
+        nonlocal row
+        if not items:
+            return
+        section(title)
+        for it in items:
+            kv(it.title, it.message)
+            if it.detail:
+                ws.cell(row=row, column=2, value=it.detail).font = Font(italic=True, size=9)
+                row += 1
+            row += 1
+
+    insights_block("Income", ins.income)
+    insights_block("Spending", ins.spending)
+    insights_block("Recurring", ins.recurring)
+
+    if ins.anomalies:
+        section("Flags")
+        for a in ins.anomalies:
+            ws.cell(row=row, column=1, value=a.kind.replace("_", " ")).font = Font(bold=True, color="B45309")
+            ws.cell(row=row, column=2, value=a.message)
+            row += 1
+            if a.suggested_action:
+                ws.cell(row=row, column=2, value=f"Action: {a.suggested_action}").font = Font(italic=True, size=9)
+                row += 1
+            row += 1
+
+    if ins.forecast:
+        section("Cash-flow forecast")
+        kv("Average monthly income", ins.forecast.avg_monthly_income)
+        kv("Average monthly expense", ins.forecast.avg_monthly_expense)
+        kv("Summary", ins.forecast.summary)
+        header = row
+        ws.cell(row=row, column=1, value="Month").font = Font(bold=True)
+        ws.cell(row=row, column=2, value="Projected balance").font = Font(bold=True)
+        ws.cell(row=row, column=3, value="At risk").font = Font(bold=True)
+        row += 1
+        for m in ins.forecast.months:
+            ws.cell(row=row, column=1, value=m.month)
+            ws.cell(row=row, column=2, value=m.projected_balance).number_format = MONEY
+            ws.cell(row=row, column=3, value="Yes" if m.at_risk else "")
+            row += 1
+        if header:
+            row += 1
+
+    if ins.tax:
+        section("Tax estimate")
+        kv("Business expenses", ins.tax.business_expenses)
+        kv("Conservative deductible estimate", ins.tax.deductible_estimate)
+        kv("Estimated VAT embedded", ins.tax.vat_estimate)
+        if ins.tax.business_category_breakdown:
+            ws.cell(row=row, column=1, value="By category").font = Font(bold=True)
+            for cat, amt in ins.tax.business_category_breakdown.items():
+                ws.cell(row=row, column=2, value=f"{cat}: {amt:,.2f}")
+                row += 1
+            row += 1
+        for note in ins.tax.notes:
+            ws.cell(row=row, column=1, value=note).font = Font(italic=True, size=9)
+            row += 1
+
+    _autosize(ws, ["Metric", "Value"])
 
 
 def _write_charts(ws, parsed: ParsedStatement) -> None:

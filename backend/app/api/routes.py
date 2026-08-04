@@ -6,7 +6,7 @@ import shutil
 from pathlib import Path
 from typing import Optional
 
-from fastapi import APIRouter, File, HTTPException, Query, UploadFile
+from fastapi import APIRouter, Body, File, HTTPException, Query, UploadFile
 from fastapi.responses import Response
 
 from app.core.config import UPLOAD_DIR
@@ -83,6 +83,16 @@ def build_router(jobs: JobManager, store: Store) -> APIRouter:
     @router.get("/jobs/{job_id}/result")
     def job_result(job_id: str) -> dict:
         result = jobs.get_result(job_id)
+        if result is None:
+            raise HTTPException(404, "Result not found.")
+        return result
+
+    @router.post("/jobs/{job_id}/edits")
+    def apply_edits(job_id: str, payload: dict = Body(...)) -> dict:
+        edits = payload.get("edits", []) if isinstance(payload, dict) else []
+        if not isinstance(edits, list):
+            raise HTTPException(400, "edits must be a list.")
+        result = jobs.apply_edits(job_id, edits)
         if result is None:
             raise HTTPException(404, "Result not found.")
         return result

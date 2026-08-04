@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import { useSearchParams } from "next/navigation";
-import { AlertCircle, Database, FileSpreadsheet, Landmark, Sparkles } from "lucide-react";
-import { getJob, getResult, triggerExport, uploadPdf } from "@/lib/api";
+import { AlertCircle, FileSpreadsheet, Layers, Pencil, Sparkles, Wand2 } from "lucide-react";
+import { applyEdits, getJob, getResult, triggerExport, uploadPdf, uploadPdfs, type TransactionEdit } from "@/lib/api";
 import type { ExportFormat, ParseResult, Transaction } from "@/lib/types";
 import { UploadDropzone } from "@/components/UploadDropzone";
 import { ProgressBar, StepIndicator } from "@/components/ProgressBar";
@@ -70,6 +70,41 @@ function HomeContent() {
   const [error, setError] = React.useState<string | null>(null);
   const [filters, setFilters] = React.useState<FiltersState>(EMPTY_FILTERS);
   const [exporting, setExporting] = React.useState(false);
+  const [editing, setEditing] = React.useState(false);
+  const [batch, setBatch] = React.useState<{ id: string; name: string }[] | null>(null);
+  const [batchIndex, setBatchIndex] = React.useState(0);
+
+  const pollJob = React.useCallback(async (id: string): Promise<ParseResult> => {
+    setPhase("processing");
+    setProgress(2);
+    setMessage("Queued…");
+    for (;;) {
+      await new Promise((r) => setTimeout(r, 700));
+      let job;
+      try {
+        job = await getJob(id);
+      } catch {
+        setError("Lost contact with the API while processing.");
+        setPhase("error");
+        throw new Error("Lost contact with the API while processing.");
+      }
+      setProgress(job.progress);
+      setMessage(job.message);
+      if (job.status === "completed") {
+        const result = await getResult(id);
+        setParsed(result);
+        setProgress(100);
+        setPhase("done");
+        return result;
+      }
+      if (job.status === "failed") {
+        const msg = job.error ?? "Processing failed.";
+        setError(msg);
+        setPhase("error");
+        throw new Error(msg);
+      }
+    }
+  }, []);
 
   const loadFromQuery = React.useCallback(async (id: string) => {
     try {
@@ -87,38 +122,7 @@ function HomeContent() {
       setError("That job could not be loaded.");
       setPhase("error");
     }
-  }, []);
-
-  const pollJob = React.useCallback(async (id: string) => {
-    setPhase("processing");
-    setProgress(2);
-    setMessage("Queued…");
-    for (;;) {
-      await new Promise((r) => setTimeout(r, 700));
-      let job;
-      try {
-        job = await getJob(id);
-      } catch {
-        setError("Lost contact with the API while processing.");
-        setPhase("error");
-        return;
-      }
-      setProgress(job.progress);
-      setMessage(job.message);
-      if (job.status === "completed") {
-        const result = await getResult(id);
-        setParsed(result);
-        setProgress(100);
-        setPhase("done");
-        return;
-      }
-      if (job.status === "failed") {
-        setError(job.error ?? "Processing failed.");
-        setPhase("error");
-        return;
-      }
-    }
-  }, []);
+  }, [pollJob]);
 
   React.useEffect(() => {
     const fromQuery = searchParams.get("job");
@@ -128,23 +132,59 @@ function HomeContent() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
 
-  const handleFile = async (f: File) => {
-    setFile(f);
+  const handleFile = async (files: File[]) => {
+    if (files.length === 0) return;
+    setFile(files[0]);
+    setBatch(null);
+    setEditing(false);
     setParsed(null);
     setError(null);
     setPhase("processing");
     setProgress(2);
     setMessage("Uploading…");
-    let id: string;
+    let ids: string[];
     try {
-      id = await uploadPdf(f);
+      ids = files.length === 1 ? [await uploadPdf(files[0])] : await uploadPdfs(files);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Upload failed.");
       setPhase("error");
       return;
     }
-    setJobId(id);
-    await pollJob(id);
+    setJobId(ids[0]);
+    setBatch(
+      files.map((f, i) => ({
+        id: ids[i],
+        name: f.name,
+      })),
+    );
+    setBatchIndex(0);
+
+    const results: ParseResult[] = [];
+    for (let i = 0; i < ids.length; i++) {
+      setMessage(`Processing ${i + 1} of ${ids.length}: ${files[i].name}`);
+      setProgress(Math.round((i / Math.max(1, ids.length)) * 100));
+      setBatchIndex(i);
+      try {
+        results.push(await pollJob(ids[i]));
+      } catch {
+        return;
+      }
+    }
+    if (results.length > 0) {
+      setParsed(results[0]);
+      setPhase("done");
+    }
+  };
+
+  const handleApplyEdits = async (edits: TransactionEdit[]) => {
+    if (!jobId) return;
+    try {
+      const result = await applyEdits(jobId, edits);
+      setParsed(result);
+      setError(null);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to apply corrections.");
+    }
   };
 
   const handleExport = async (format: ExportFormat) => {
@@ -164,7 +204,7 @@ function HomeContent() {
     const { from, to } = presetDateRange(filters.preset);
     const effFrom = filters.preset === "custom" ? filters.date_from : (from ?? "");
     const effTo = filters.preset === "custom" ? filters.date_to : (to ?? "");
-    return parsed.transactions.filter((t: Transaction) => {
+    const matches = (t: Transaction): boolean => {
       if (t.is_ending_balance) return true;
       const q = filters.q.trim().toLowerCase();
       if (q && !t.description.toLowerCase().includes(q) && !t.reference.toLowerCase().includes(q)) return false;
@@ -177,7 +217,12 @@ function HomeContent() {
       if (filters.amount_min && amount < Number(filters.amount_min)) return false;
       if (filters.amount_max && amount > Number(filters.amount_max)) return false;
       return true;
+    };
+    const rows: Row[] = [];
+    parsed.transactions.forEach((t, i) => {
+      if (matches(t)) rows.push({ ...t, i });
     });
+    return rows;
   }, [parsed, filters]);
 
   const meta = parsed?.meta;
@@ -195,38 +240,45 @@ function HomeContent() {
   return (
     <main className="container py-8">
       {phase === "idle" && (
-        <div className="mx-auto max-w-3xl space-y-6">
-          <div className="space-y-2 text-center">
-            <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">
-              Turn any bank statement into a clean Excel workbook
-            </h1>
-            <p className="text-muted-foreground">
-              AI-powered extraction from text and scanned PDFs — every transaction, every balance,
-              mathematically validated, ready for accounting and audit.
-            </p>
-          </div>
-          <UploadDropzone onFile={handleFile} />
-          <div className="grid gap-3 sm:grid-cols-3">
-            {[
-              { icon: Sparkles, title: "Hybrid AI extraction", body: "OCR + layout detection understands any bank layout" },
-              { icon: FileSpreadsheet, title: "Professional Excel output", body: "Transactions, summary, validation & charts" },
-              { icon: Database, title: "99.9% accuracy target", body: "Balance reconciliation & zero-skip guarantees" },
-            ].map(({ icon: Icon, title, body }) => (
-              <Card key={title}>
-                <CardContent className="p-5">
-                  <Icon className="mb-3 h-6 w-6 text-primary" />
-                  <p className="text-sm font-semibold">{title}</p>
-                  <p className="mt-1 text-xs text-muted-foreground">{body}</p>
-                </CardContent>
-              </Card>
-            ))}
+        <div className="relative">
+          <div aria-hidden className="pointer-events-none absolute -top-24 left-1/2 -z-10 h-[480px] w-[820px] -translate-x-1/2 overflow-hidden rounded-full bg-gradient-to-tr from-primary/25 via-indigo-400/15 to-emerald-400/15 blur-3xl" />
+          <div className="mx-auto max-w-3xl space-y-8">
+            <div className="space-y-4 text-center">
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-primary/20 bg-primary/5 px-3 py-1 text-xs font-medium text-primary">
+                <Sparkles className="h-3.5 w-3.5" />
+                AI-powered statement intelligence
+              </span>
+              <h1 className="bg-gradient-to-r from-foreground via-foreground to-primary bg-clip-text text-4xl font-black tracking-tight text-transparent sm:text-5xl">
+                Turn any bank statement into a clean Excel workbook
+              </h1>
+              <p className="mx-auto max-w-xl text-muted-foreground">
+                AI-powered extraction from text and scanned PDFs — every transaction, every balance,
+                mathematically validated, ready for accounting and audit.
+              </p>
+            </div>
+            <UploadDropzone onFiles={handleFile} multiple />
+            <div className="grid gap-3 sm:grid-cols-3">
+              {[
+                { icon: Sparkles, title: "Hybrid AI extraction", body: "OCR + layout detection understands any bank layout" },
+                { icon: FileSpreadsheet, title: "Professional Excel output", body: "Transactions, summary, validation, insights & charts" },
+                { icon: Layers, title: "Batch processing", body: "Upload several statements at once and switch between them" },
+              ].map(({ icon: Icon, title, body }) => (
+                <Card key={title} className="group border-primary/10 bg-card/70 backdrop-blur transition-colors hover:border-primary/30">
+                  <CardContent className="p-5">
+                    <Icon className="mb-3 h-6 w-6 text-primary transition-transform group-hover:scale-110" />
+                    <p className="text-sm font-semibold">{title}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">{body}</p>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
           </div>
         </div>
       )}
 
       {phase === "processing" && (
         <div className="mx-auto max-w-2xl space-y-6">
-          <UploadDropzone onFile={handleFile} disabled />
+          <UploadDropzone onFiles={handleFile} disabled multiple />
           <Card>
             <CardContent className="space-y-5 p-6">
               <StepIndicator
@@ -234,6 +286,11 @@ function HomeContent() {
                 current={progress < 25 ? 0 : progress < 55 ? 1 : progress < 80 ? 2 : 3}
               />
               <ProgressBar value={progress} label={`${message}${file ? ` — ${file.name}` : ""}`} />
+              {batch && batch.length > 1 && (
+                <p className="text-center text-xs text-muted-foreground">
+                  Batch of {batch.length} statements · {batchIndex + 1} of {batch.length} loaded
+                </p>
+              )}
             </CardContent>
           </Card>
         </div>
@@ -241,7 +298,7 @@ function HomeContent() {
 
       {phase === "error" && (
         <div className="mx-auto max-w-2xl space-y-4">
-          <UploadDropzone onFile={handleFile} />
+          <UploadDropzone onFiles={handleFile} multiple />
           <Card className="border-destructive/40 bg-destructive/5">
             <CardContent className="flex items-start gap-3 p-5">
               <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-destructive" />
@@ -256,6 +313,29 @@ function HomeContent() {
 
       {phase === "done" && parsed && (
         <div className="space-y-6">
+          {batch && batch.length > 1 && (
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+                <Layers className="h-3.5 w-3.5" />
+                Batch
+              </span>
+              {batch.map((b, i) => (
+                <Button
+                  key={b.id}
+                  size="sm"
+                  variant={i === batchIndex ? "default" : "outline"}
+                  className="max-w-[220px] truncate"
+                  onClick={() => {
+                    setBatchIndex(i);
+                    setJobId(b.id);
+                    getResult(b.id).then(setParsed).catch(() => setError("Could not load this statement."));
+                  }}
+                >
+                  {b.name}
+                </Button>
+              ))}
+            </div>
+          )}
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-3">
               <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
@@ -276,6 +356,14 @@ function HomeContent() {
                 {parsed.validation.balance_reconciled ? "Balances reconciled" : "Check validation"}
               </Badge>
               <Badge variant="outline">{parsed.summary.number_of_transactions.toLocaleString()} transactions</Badge>
+              <Button
+                size="sm"
+                variant={editing ? "default" : "outline"}
+                onClick={() => setEditing((e) => !e)}
+              >
+                {editing ? <Wand2 className="h-3.5 w-3.5" /> : <Pencil className="h-3.5 w-3.5" />}
+                {editing ? "Done correcting" : "Correct data"}
+              </Button>
             </div>
           </div>
 
@@ -291,14 +379,15 @@ function HomeContent() {
               </Card>
               <TransactionsTable
                 rows={filteredRows}
-                currency={parsed.summary.currency}
                 exporting={exporting}
                 onExport={handleExport}
+                editable={editing}
+                onApplyEdits={handleApplyEdits}
               />
             </div>
             <div className="space-y-4">
               <ValidationPanel report={parsed.validation} />
-              <InsightsPanel insights={parsed.insights} currency={parsed.summary.currency} />
+              <InsightsPanel insights={parsed.insights} currency={parsed.summary.currency} summary={parsed.summary} />
             </div>
           </div>
 

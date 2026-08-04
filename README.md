@@ -10,6 +10,12 @@ validated Excel workbook (plus CSV / JSON / PDF).
 - **17 supported Nigerian bank layouts** — automatic layout detection for anything else.
 - **Validation engine** — balance reconciliation, missing-row detection, duplicate detection,
   zero-skip guarantee with `is_estimated` flags.
+- **AI insights** — income / spending / recurring patterns, anomaly detection, 3-month
+  cash-flow forecast, and a rule-based tax assistant (business spend, conservative deductible
+  estimate, embedded VAT).
+- **Manual correction** — edit any extracted value in the UI (or via `POST /api/jobs/{id}/edits`)
+  and BSI re-runs validation, summary, and insights on the corrected data.
+- **Batch processing** — drop in several statements at once and switch between results.
 - **Job-based async API** — upload once, poll progress, download exports.
 - **SQLite persistence** — search across every statement processed on this server.
 
@@ -62,7 +68,7 @@ API docs: http://localhost:8000/docs
 ```powershell
 cd backend
 .\.venv\Scripts\Activate.ps1
-pytest -q          # fast suite: 17-bank layout suite, amounts, exports, API flow
+pytest -q          # 99 tests: 17-bank layout suite, amounts, insights/tax, edits, exports, API flow
 pytest -m qa       # PRD QA corpus: 200+ statements (all 17 banks), multi-line,
                    # 600-txn performance (<2s/page), plus real-OCR accuracy
 ```
@@ -80,7 +86,8 @@ npm run dev       # http://localhost:3000
 
 ### Pages
 
-- **Dashboard** (`/`) — upload a statement, watch progress, review validation + filtered table.
+- **Dashboard** (`/`) — upload one or several statements (batch), watch progress, review
+  validation, filter the table, correct extracted values inline, and see AI insights + charts.
 - **History** (`/history`) — all jobs, re-open any completed result via `/?job=<id>`.
 - **Search** (`/search`) — keyword / date / amount / type search across every stored statement.
 - **Banks** (`/templates`) — list of out-of-the-box supported bank layouts.
@@ -133,9 +140,9 @@ the **absolute, publicly reachable** backend URL. See `frontend/.env.example`.
 
 | Format | Contents |
 | ------ | -------- |
-| `.xlsx` | 4 sheets: **Transactions**, **Summary**, **Validation**, **Charts** (native Excel charts) |
+| `.xlsx` | 6 sheets: **Transactions**, **Summary**, **Validation**, **Insights** (AI insights, anomalies, forecast, tax), **Charts** (native Excel charts) |
 | `.csv` | Transactions (UTF-8 BOM for Excel) |
-| `.json` | Full structured result |
+| `.json` | Full structured result (incl. insights) |
 | `.pdf` | Professional report summary |
 | `.sqlite` | Standalone SQLite DB (meta/summary/transactions/validation) |
 
@@ -149,6 +156,7 @@ the **absolute, publicly reachable** backend URL. See `frontend/.env.example`.
 | `GET`  | `/api/jobs`              | List all jobs                            |
 | `GET`  | `/api/jobs/{id}`         | Job status + progress                    |
 | `GET`  | `/api/jobs/{id}/result`  | Full parsed result (JSON)                |
+| `POST` | `/api/jobs/{id}/edits`   | Apply manual corrections, re-validates & re-computes insights |
 | `GET`  | `/api/jobs/{id}/export`  | `?format=xlsx\|csv\|json\|pdf\|sqlite` |
 | `DELETE` | `/api/jobs/{id}`       | Delete a job                             |
 | `GET`  | `/api/search`            | `?q=&min_amount=&max_amount=&balance=&tx_type=&from_date=&…` |

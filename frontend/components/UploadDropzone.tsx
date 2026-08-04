@@ -6,24 +6,33 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 interface UploadDropzoneProps {
-  onFile: (file: File) => void;
+  onFile?: (file: File) => void;
+  onFiles?: (files: File[]) => void;
   disabled?: boolean;
+  multiple?: boolean;
 }
 
-export function UploadDropzone({ onFile, disabled }: UploadDropzoneProps) {
+export function UploadDropzone({ onFile, onFiles, disabled, multiple }: UploadDropzoneProps) {
   const [dragOver, setDragOver] = React.useState(false);
   const inputRef = React.useRef<HTMLInputElement>(null);
-  const [selected, setSelected] = React.useState<File | null>(null);
+  const [selected, setSelected] = React.useState<File[] | null>(null);
 
   const handleFiles = (files: FileList | null) => {
-    const file = files?.[0];
-    if (!file) return;
-    if (!file.name.toLowerCase().endsWith(".pdf")) {
+    if (!files || files.length === 0) return;
+    const pdfs = Array.from(files).filter((f) => f.name.toLowerCase().endsWith(".pdf"));
+    if (pdfs.length === 0) {
       alert("Please upload a PDF file.");
       return;
     }
-    setSelected(file);
-    onFile(file);
+    if (pdfs.length < Array.from(files).length) {
+      alert("Non-PDF files were ignored.");
+    }
+    setSelected(pdfs);
+    if (pdfs.length === 1 && !onFiles) {
+      onFile?.(pdfs[0]);
+    } else if (onFiles) {
+      onFiles(pdfs);
+    }
   };
 
   return (
@@ -57,6 +66,7 @@ export function UploadDropzone({ onFile, disabled }: UploadDropzoneProps) {
         ref={inputRef}
         type="file"
         accept="application/pdf,.pdf"
+        multiple={multiple}
         className="hidden"
         onChange={(e) => handleFiles(e.target.files)}
       />
@@ -69,7 +79,9 @@ export function UploadDropzone({ onFile, disabled }: UploadDropzoneProps) {
       </div>
       {selected && !disabled ? (
         <div className="flex items-center gap-2 text-sm">
-          <span className="max-w-[280px] truncate font-medium">{selected.name}</span>
+          <span className="max-w-[280px] truncate font-medium">
+            {selected.length === 1 ? selected[0].name : `${selected.length} files`}
+          </span>
           <Button
             variant="ghost"
             size="icon"
@@ -85,9 +97,13 @@ export function UploadDropzone({ onFile, disabled }: UploadDropzoneProps) {
       ) : (
         <>
           <div>
-            <p className="text-base font-semibold">Drag & drop your bank statement PDF</p>
+            <p className="text-base font-semibold">
+              {multiple ? "Drag & drop bank statement PDFs" : "Drag & drop your bank statement PDF"}
+            </p>
             <p className="mt-1 text-sm text-muted-foreground">
-              or click to browse — text, scanned, multi-page and 500+ page statements supported
+              {multiple
+                ? "or click to browse — process several statements in one batch"
+                : "or click to browse — text, scanned, multi-page and 500+ page statements supported"}
             </p>
           </div>
           {disabled && (

@@ -140,12 +140,21 @@ export interface Forecast {
   summary: string;
 }
 
+export interface TaxSummary {
+  business_expenses: number;
+  deductible_estimate: number;
+  vat_estimate: number;
+  business_category_breakdown: Record<string, number>;
+  notes: string[];
+}
+
 export interface InsightsReport {
   income: Insight[];
   spending: Insight[];
   recurring: Insight[];
   anomalies: Anomaly[];
   forecast: Forecast | null;
+  tax: TaxSummary | null;
 }
 
 export interface ParseResult {

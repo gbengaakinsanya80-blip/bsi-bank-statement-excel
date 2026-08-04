@@ -119,6 +119,91 @@ class JobManager:
 
         return json.loads(row["result_json"])
 
+    def apply_edits(self, job_id: str, edits: list[dict[str, Any]]) -> Optional[dict[str, Any]]:
+        """Patch transactions of a completed job, then recompute summary,
+        validation and insights and persist the corrected result."""
+        result = self.get_result(job_id)
+        if result is None:
+            return None
+
+        from app.extraction.categorizer import categorize
+        from app.services.pipeline import _attach_insights, rehydrate_parsed
+        from app.services.stats import compute_summary
+        from app.validation.checks import validate_statement
+
+        parsed = rehydrate_parsed(result)
+        txs = parsed.transactions
+
+        scalar_fields = {"description", "reference", "category", "branch", "channel", "transaction_type"}
+        date_fields = {"date", "value_date"}
+        money_fields = {"debit", "credit", "balance"}
+
+        def _coerce_date(value: Any):
+            if value in (None, ""):
+                return None
+            from datetime import date as _date
+
+            if isinstance(value, _date):
+                return value
+            text = str(value)
+            for fmt in ("%Y-%m-%d", "%d/%m/%Y", "%d-%m-%Y"):
+                from datetime import datetime
+
+                try:
+                    return datetime.strptime(text, fmt).date()
+                except ValueError:
+                    continue
+            return None
+
+        def _coerce_money(value: Any):
+            if value in (None, ""):
+                return None
+            try:
+                return float(str(value).replace(",", ""))
+            except ValueError:
+                return None
+
+        changed = False
+        for edit in edits:
+            if not isinstance(edit, dict):
+                continue
+            index = edit.get("transaction_index")
+            if not isinstance(index, int) or not 0 <= index < len(txs):
+                continue
+            tx = txs[index]
+            for field, raw in (edit.get("fields") or {}).items():
+                if field in scalar_fields:
+                    setattr(tx, field, str(raw or ""))
+                    changed = True
+                elif field in date_fields:
+                    setattr(tx, "tx_date" if field == "date" else "value_date", _coerce_date(raw))
+                    changed = True
+                elif field in money_fields:
+                    setattr(tx, field, _coerce_money(raw))
+                    changed = True
+
+        if not changed:
+            return result
+
+        for tx in txs:
+            if tx.description:
+                tx.category = categorize(tx.description)
+            tx.__post_init__()
+
+        summary = compute_summary(txs, parsed.meta.currency)
+        validation = validate_statement(txs, summary, parsed.validation.ocr_confidence)
+        parsed.summary = summary
+        parsed.validation = validation
+        _attach_insights(parsed)
+
+        filename = parsed.meta.file_name or result.get("filename") or "statement"
+        self._store.save_job(job_id, filename, "completed", parsed)
+        with self._lock:
+            job = self._jobs.get(job_id)
+            if job is not None:
+                job["result"] = parsed
+        return parsed.to_dict()
+
     def list_jobs(self, limit: int = 50) -> list[dict[str, Any]]:
         with self._lock:
             live = [_job_summary(j) for j in list(self._jobs.values())[-limit:]]

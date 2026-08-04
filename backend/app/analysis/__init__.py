@@ -10,5 +10,6 @@ from __future__ import annotations
 from .anomalies import detect_anomalies
 from .forecast import forecast_cashflow
 from .insights import generate_insights
+from .tax import estimate_tax
 
-__all__ = ["detect_anomalies", "forecast_cashflow", "generate_insights"]
+__all__ = ["detect_anomalies", "forecast_cashflow", "generate_insights", "estimate_tax"]

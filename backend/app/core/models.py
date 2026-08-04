@@ -289,6 +289,26 @@ class Forecast:
 
 
 @dataclass
+class TaxSummary:
+    """Estimated business spend, tax-deductible figure and embedded VAT."""
+
+    business_expenses: float = 0.0
+    deductible_estimate: float = 0.0
+    vat_estimate: float = 0.0
+    business_category_breakdown: dict[str, float] = field(default_factory=dict)
+    notes: list[str] = field(default_factory=list)
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "business_expenses": round(self.business_expenses, 2),
+            "deductible_estimate": round(self.deductible_estimate, 2),
+            "vat_estimate": round(self.vat_estimate, 2),
+            "business_category_breakdown": self.business_category_breakdown,
+            "notes": self.notes,
+        }
+
+
+@dataclass
 class InsightsReport:
     """Grouped analysis output for a parsed statement."""
 
@@ -297,10 +317,11 @@ class InsightsReport:
     recurring: list[Insight] = field(default_factory=list)
     anomalies: list[Anomaly] = field(default_factory=list)
     forecast: Optional[Forecast] = None
+    tax: Optional[TaxSummary] = None
 
     @property
     def is_empty(self) -> bool:
-        return not (self.income or self.spending or self.recurring or self.anomalies or self.forecast)
+        return not (self.income or self.spending or self.recurring or self.anomalies or self.forecast or self.tax)
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -309,6 +330,7 @@ class InsightsReport:
             "recurring": [i.to_dict() for i in self.recurring],
             "anomalies": [a.to_dict() for a in self.anomalies],
             "forecast": self.forecast.to_dict() if self.forecast else None,
+            "tax": self.tax.to_dict() if self.tax else None,
         }
 
 

@@ -1,4 +1,4 @@
-import type { ExportFormat, Job, ParseResult, SearchFilterParams, SearchResponse } from "./types";
+import type { ExportFormat, Job, ParseResult, SearchFilterParams, SearchResponse, Transaction } from "./types";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? "http://localhost:8000/api";
 
@@ -81,6 +81,32 @@ export async function searchTransactions(params: SearchFilterParams): Promise<Se
     throw new Error((body as { detail?: string }).detail ?? "Search failed.");
   }
   return body as SearchResponse;
+}
+
+export type TransactionEdit = {
+  transaction_index: number;
+  fields: Partial<Pick<Transaction, "date" | "value_date" | "description" | "reference" | "debit" | "credit" | "balance" | "category">>;
+};
+
+export async function applyEdits(jobId: string, edits: TransactionEdit[]): Promise<ParseResult> {
+  const res = await fetch(`${API_BASE}/jobs/${jobId}/edits`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ edits }),
+  });
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error((body as { detail?: string }).detail ?? "Failed to apply corrections.");
+  }
+  return body as ParseResult;
+}
+
+export async function uploadPdfs(files: File[]): Promise<string[]> {
+  const ids: string[] = [];
+  for (const file of files) {
+    ids.push(await uploadPdf(file));
+  }
+  return ids;
 }
 
 export function healthCheck(): Promise<boolean> {

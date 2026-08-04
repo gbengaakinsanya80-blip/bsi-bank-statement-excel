@@ -74,6 +74,56 @@ def test_process_flow(client, pdf_path) -> None:
         assert len(e.content) > 0
 
 
+def test_apply_edits_recomputes_result(client, pdf_path) -> None:
+    with pdf_path.open("rb") as fh:
+        r = client.post("/api/process", files={"upload": ("stmt.pdf", fh, "application/pdf")})
+    job_id = r.json()["job_id"]
+    for _ in range(100):
+        if client.get(f"/api/jobs/{job_id}").json()["status"] == "completed":
+            break
+        time.sleep(0.2)
+
+    before = client.get(f"/api/jobs/{job_id}/result").json()
+    idx = next(
+        i
+        for i, t in enumerate(before["transactions"])
+        if not t["is_beginning_balance"] and not t["is_ending_balance"] and t["debit"] is not None
+    )
+    original = before["transactions"][idx]
+    fixed_amount = 123_456.00
+
+    r = client.post(
+        f"/api/jobs/{job_id}/edits",
+        json={
+            "edits": [
+                {
+                    "transaction_index": idx,
+                    "fields": {
+                        "description": "CORRECTED POS PURCHASE SHOPRITE LAGOS",
+                        "debit": fixed_amount,
+                    },
+                }
+            ]
+        },
+    )
+    assert r.status_code == 200
+    after = r.json()
+    edited = after["transactions"][idx]
+    assert edited["description"] == "CORRECTED POS PURCHASE SHOPRITE LAGOS"
+    assert edited["debit"] == fixed_amount
+    assert edited["category"] == "POS"
+
+    before_debits = before["summary"]["total_debits"]
+    after_debits = after["summary"]["total_debits"]
+    assert abs(after_debits - (before_debits - (original["debit"] or 0.0) + fixed_amount)) < 0.01
+
+    persisted = client.get(f"/api/jobs/{job_id}/result").json()
+    assert persisted["transactions"][idx]["debit"] == fixed_amount
+
+    bad = client.post(f"/api/jobs/{job_id}/edits", json={"edits": "nope"})
+    assert bad.status_code == 400
+
+
 def test_job_not_found(client) -> None:
     assert client.get("/api/jobs/nope").status_code == 404
     assert client.get("/api/jobs/nope/result").status_code == 404

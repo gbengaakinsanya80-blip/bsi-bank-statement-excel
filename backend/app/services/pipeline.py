@@ -16,6 +16,7 @@ from app.core.models import (
     ParsedStatement,
     StatementMeta,
     SummaryStats,
+    TaxSummary,
     Transaction,
     ValidationIssue,
     ValidationReport,
@@ -49,10 +50,12 @@ def _attach_insights(parsed: ParsedStatement) -> None:
     from app.analysis.anomalies import detect_anomalies
     from app.analysis.forecast import forecast_cashflow
     from app.analysis.insights import generate_insights
+    from app.analysis.tax import estimate_tax
 
     report = generate_insights(parsed.transactions, parsed.summary, parsed.meta)
     report.anomalies = detect_anomalies(parsed.transactions, parsed.summary)
     report.forecast = forecast_cashflow(parsed.transactions, parsed.summary)
+    report.tax = estimate_tax(parsed.transactions, parsed.summary)
     parsed.insights = report
 
 
@@ -230,6 +233,19 @@ def _rehydrate_insights(d: dict[str, Any]) -> InsightsReport:
         recurring=[_rehydrate_insight(i) for i in d.get("recurring", [])],
         anomalies=[_rehydrate_anomaly(a) for a in d.get("anomalies", [])],
         forecast=_rehydrate_forecast(d.get("forecast")),
+        tax=_rehydrate_tax(d.get("tax")),
+    )
+
+
+def _rehydrate_tax(t: Any) -> Optional[TaxSummary]:
+    if not t:
+        return None
+    return TaxSummary(
+        business_expenses=t.get("business_expenses", 0.0),
+        deductible_estimate=t.get("deductible_estimate", 0.0),
+        vat_estimate=t.get("vat_estimate", 0.0),
+        business_category_breakdown=t.get("business_category_breakdown", {}),
+        notes=t.get("notes", []),
     )
 
 
