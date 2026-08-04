@@ -207,6 +207,112 @@ class SummaryStats:
 
 
 @dataclass
+class Insight:
+    """A single natural-language finding about the statement."""
+
+    kind: str
+    title: str
+    message: str
+    severity: str = "info"  # info | positive | warning
+    metric_value: Optional[float] = None
+    detail: Optional[str] = None
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "kind": self.kind,
+            "title": self.title,
+            "message": self.message,
+            "severity": self.severity,
+            "metric_value": self.metric_value,
+            "detail": self.detail,
+        }
+
+
+@dataclass
+class Anomaly:
+    """A behavioural red flag worth a second look."""
+
+    kind: str
+    severity: str
+    message: str
+    page_number: Optional[int] = None
+    line_number: Optional[int] = None
+    transaction_index: Optional[int] = None
+    amount: Optional[float] = None
+    suggested_action: Optional[str] = None
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "kind": self.kind,
+            "severity": self.severity,
+            "message": self.message,
+            "page_number": self.page_number,
+            "line_number": self.line_number,
+            "transaction_index": self.transaction_index,
+            "amount": self.amount,
+            "suggested_action": self.suggested_action,
+        }
+
+
+@dataclass
+class ForecastMonth:
+    month: str
+    projected_balance: Optional[float] = None
+    expected_income: float = 0.0
+    expected_expense: float = 0.0
+    at_risk: bool = False
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "month": self.month,
+            "projected_balance": self.projected_balance,
+            "expected_income": self.expected_income,
+            "expected_expense": self.expected_expense,
+            "at_risk": self.at_risk,
+        }
+
+
+@dataclass
+class Forecast:
+    avg_monthly_income: float = 0.0
+    avg_monthly_expense: float = 0.0
+    months: list[ForecastMonth] = field(default_factory=list)
+    summary: str = ""
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "avg_monthly_income": self.avg_monthly_income,
+            "avg_monthly_expense": self.avg_monthly_expense,
+            "months": [m.to_dict() for m in self.months],
+            "summary": self.summary,
+        }
+
+
+@dataclass
+class InsightsReport:
+    """Grouped analysis output for a parsed statement."""
+
+    income: list[Insight] = field(default_factory=list)
+    spending: list[Insight] = field(default_factory=list)
+    recurring: list[Insight] = field(default_factory=list)
+    anomalies: list[Anomaly] = field(default_factory=list)
+    forecast: Optional[Forecast] = None
+
+    @property
+    def is_empty(self) -> bool:
+        return not (self.income or self.spending or self.recurring or self.anomalies or self.forecast)
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "income": [i.to_dict() for i in self.income],
+            "spending": [i.to_dict() for i in self.spending],
+            "recurring": [i.to_dict() for i in self.recurring],
+            "anomalies": [a.to_dict() for a in self.anomalies],
+            "forecast": self.forecast.to_dict() if self.forecast else None,
+        }
+
+
+@dataclass
 class ValidationReport:
     missing_rows: list[ValidationIssue] = field(default_factory=list)
     balance_errors: list[ValidationIssue] = field(default_factory=list)
@@ -247,6 +353,7 @@ class ParsedStatement:
     transactions: list[Transaction]
     validation: ValidationReport
     summary: SummaryStats
+    insights: InsightsReport = field(default_factory=InsightsReport)
     columns_detected: dict[str, Any] = field(default_factory=dict)
     raw_pages: list[Any] = field(default_factory=list)
 
@@ -270,6 +377,7 @@ class ParsedStatement:
             "transactions": [t.to_dict() for t in self.transactions],
             "validation": self.validation.to_dict(),
             "summary": self.summary.to_dict(),
+            "insights": self.insights.to_dict(),
             "columns_detected": self.columns_detected,
             "raw_pages": self.raw_pages if include_raw else [],
         }

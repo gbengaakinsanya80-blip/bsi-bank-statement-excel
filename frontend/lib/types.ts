@@ -105,11 +105,55 @@ export interface ColumnsDetected {
   header_page: number | null;
 }
 
+export interface Insight {
+  kind: string;
+  title: string;
+  message: string;
+  severity: "info" | "positive" | "warning";
+  metric_value: number | null;
+  detail: string | null;
+}
+
+export interface Anomaly {
+  kind: string;
+  severity: string;
+  message: string;
+  page_number: number | null;
+  line_number: number | null;
+  transaction_index: number | null;
+  amount: number | null;
+  suggested_action: string | null;
+}
+
+export interface ForecastMonth {
+  month: string;
+  projected_balance: number | null;
+  expected_income: number;
+  expected_expense: number;
+  at_risk: boolean;
+}
+
+export interface Forecast {
+  avg_monthly_income: number;
+  avg_monthly_expense: number;
+  months: ForecastMonth[];
+  summary: string;
+}
+
+export interface InsightsReport {
+  income: Insight[];
+  spending: Insight[];
+  recurring: Insight[];
+  anomalies: Anomaly[];
+  forecast: Forecast | null;
+}
+
 export interface ParseResult {
   meta: Meta;
   transactions: Transaction[];
   validation: ValidationReport;
   summary: Summary;
+  insights: InsightsReport;
   columns_detected: ColumnsDetected;
   raw_pages: string[];
 }

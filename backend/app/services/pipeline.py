@@ -8,6 +8,11 @@ from datetime import date
 from typing import Any, Callable, Optional
 
 from app.core.models import (
+    Anomaly,
+    Forecast,
+    ForecastMonth,
+    Insight,
+    InsightsReport,
     ParsedStatement,
     StatementMeta,
     SummaryStats,
@@ -33,8 +38,22 @@ def process_file(
 
     parsed = engine.process(file_path, _cb)
     if progress_cb is not None:
-        progress_cb(97.0, "Finalising")
+        progress_cb(97.0, "Analysing")
+    _attach_insights(parsed)
+    if progress_cb is not None:
+        progress_cb(99.0, "Finalising")
     return parsed
+
+
+def _attach_insights(parsed: ParsedStatement) -> None:
+    from app.analysis.anomalies import detect_anomalies
+    from app.analysis.forecast import forecast_cashflow
+    from app.analysis.insights import generate_insights
+
+    report = generate_insights(parsed.transactions, parsed.summary, parsed.meta)
+    report.anomalies = detect_anomalies(parsed.transactions, parsed.summary)
+    report.forecast = forecast_cashflow(parsed.transactions, parsed.summary)
+    parsed.insights = report
 
 
 # ---------------------------------------------------------------------- #
@@ -113,6 +132,7 @@ def rehydrate_parsed(data: dict[str, Any]) -> ParsedStatement:
         transactions=transactions,
         validation=validation,
         summary=summary,
+        insights=_rehydrate_insights(data.get("insights", {})),
         columns_detected=data.get("columns_detected", {}),
         raw_pages=[],
     )
@@ -198,4 +218,61 @@ def _rehydrate_summary(s: dict[str, Any]) -> SummaryStats:
         monthly_cash_flow=s.get("monthly_cash_flow", []),
         daily_cash_flow=s.get("daily_cash_flow", []),
         currency=s.get("currency", "NGN"),
+    )
+
+
+def _rehydrate_insights(d: dict[str, Any]) -> InsightsReport:
+    if not d:
+        return InsightsReport()
+    return InsightsReport(
+        income=[_rehydrate_insight(i) for i in d.get("income", [])],
+        spending=[_rehydrate_insight(i) for i in d.get("spending", [])],
+        recurring=[_rehydrate_insight(i) for i in d.get("recurring", [])],
+        anomalies=[_rehydrate_anomaly(a) for a in d.get("anomalies", [])],
+        forecast=_rehydrate_forecast(d.get("forecast")),
+    )
+
+
+def _rehydrate_insight(i: dict[str, Any]) -> Insight:
+    return Insight(
+        kind=i.get("kind", ""),
+        title=i.get("title", ""),
+        message=i.get("message", ""),
+        severity=i.get("severity", "info"),
+        metric_value=i.get("metric_value"),
+        detail=i.get("detail"),
+    )
+
+
+def _rehydrate_anomaly(a: dict[str, Any]) -> Anomaly:
+    return Anomaly(
+        kind=a.get("kind", ""),
+        severity=a.get("severity", "warning"),
+        message=a.get("message", ""),
+        page_number=a.get("page_number"),
+        line_number=a.get("line_number"),
+        transaction_index=a.get("transaction_index"),
+        amount=a.get("amount"),
+        suggested_action=a.get("suggested_action"),
+    )
+
+
+def _rehydrate_forecast(f: Any) -> Optional[Forecast]:
+    if not f:
+        return None
+    return Forecast(
+        avg_monthly_income=f.get("avg_monthly_income", 0.0),
+        avg_monthly_expense=f.get("avg_monthly_expense", 0.0),
+        months=[_rehydrate_forecast_month(m) for m in f.get("months", [])],
+        summary=f.get("summary", ""),
+    )
+
+
+def _rehydrate_forecast_month(m: dict[str, Any]) -> ForecastMonth:
+    return ForecastMonth(
+        month=m.get("month", ""),
+        projected_balance=m.get("projected_balance"),
+        expected_income=m.get("expected_income", 0.0),
+        expected_expense=m.get("expected_expense", 0.0),
+        at_risk=m.get("at_risk", False),
     )

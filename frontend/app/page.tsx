@@ -9,6 +9,7 @@ import { UploadDropzone } from "@/components/UploadDropzone";
 import { ProgressBar, StepIndicator } from "@/components/ProgressBar";
 import { SummaryCards } from "@/components/SummaryCards";
 import { ValidationPanel } from "@/components/ValidationPanel";
+import { InsightsPanel } from "@/components/InsightsPanel";
 import { TransactionsTable, type Row } from "@/components/TransactionsTable";
 import { Filters, EMPTY_FILTERS, type FiltersState } from "@/components/Filters";
 import { Badge } from "@/components/ui/badge";
@@ -295,7 +296,10 @@ function HomeContent() {
                 onExport={handleExport}
               />
             </div>
-            <ValidationPanel report={parsed.validation} />
+            <div className="space-y-4">
+              <ValidationPanel report={parsed.validation} />
+              <InsightsPanel insights={parsed.insights} currency={parsed.summary.currency} />
+            </div>
           </div>
 
           <footer className="flex flex-wrap items-center justify-between gap-3 border-t pt-6 text-xs text-muted-foreground">
