@@ -17,6 +17,35 @@ import { Card, CardContent } from "@/components/ui/card";
 
 const STEPS = ["Read PDF", "Detect layout", "Extract", "Validate"];
 
+function presetDateRange(
+  preset: FiltersState["preset"],
+  now = new Date(),
+): { from: string | null; to: string | null } {
+  const iso = (d: Date) => {
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${d.getFullYear()}-${m}-${day}`;
+  };
+  switch (preset) {
+    case "today": {
+      const t = iso(now);
+      return { from: t, to: t };
+    }
+    case "yesterday": {
+      const y = new Date(now);
+      y.setDate(y.getDate() - 1);
+      const t = iso(y);
+      return { from: t, to: t };
+    }
+    case "this_month": {
+      const first = new Date(now.getFullYear(), now.getMonth(), 1);
+      return { from: iso(first), to: iso(now) };
+    }
+    default:
+      return { from: null, to: null };
+  }
+}
+
 export default function Home() {
   return (
     <React.Suspense
@@ -131,14 +160,18 @@ function HomeContent() {
 
   const filteredRows = React.useMemo<Row[]>(() => {
     if (!parsed) return [];
+    const { from, to } = presetDateRange(filters.preset);
+    const effFrom = filters.preset === "custom" ? filters.date_from : (from ?? "");
+    const effTo = filters.preset === "custom" ? filters.date_to : (to ?? "");
     return parsed.transactions.filter((t: Transaction) => {
       if (t.is_ending_balance) return true;
       const q = filters.q.trim().toLowerCase();
       if (q && !t.description.toLowerCase().includes(q) && !t.reference.toLowerCase().includes(q)) return false;
-      if (filters.date_from && t.date && t.date < filters.date_from) return false;
-      if (filters.date_to && t.date && t.date > filters.date_to) return false;
+      if (effFrom && t.date && t.date < effFrom) return false;
+      if (effTo && t.date && t.date > effTo) return false;
       if (filters.direction === "debit" && t.debit === null) return false;
       if (filters.direction === "credit" && t.credit === null) return false;
+      if (filters.category && t.category !== filters.category) return false;
       const amount = t.debit ?? t.credit ?? 0;
       if (filters.amount_min && amount < Number(filters.amount_min)) return false;
       if (filters.amount_max && amount > Number(filters.amount_max)) return false;
@@ -148,6 +181,15 @@ function HomeContent() {
 
   const meta = parsed?.meta;
   const detectedFields = parsed?.columns_detected.columns.map((c) => c.field).join(", ");
+
+  const categories = React.useMemo(() => {
+    if (!parsed) return [];
+    const set = new Set<string>();
+    for (const t of parsed.transactions) {
+      if (t.category && !t.is_beginning_balance && !t.is_ending_balance) set.add(t.category);
+    }
+    return Array.from(set).sort();
+  }, [parsed]);
 
   return (
     <main className="container py-8">
@@ -241,7 +283,7 @@ function HomeContent() {
           <div className="grid gap-4 lg:grid-cols-3">
             <div className="lg:col-span-2">
               <Card className="mb-4 p-4">
-                <Filters value={filters} onChange={setFilters} onClear={() => setFilters(EMPTY_FILTERS)} />
+                <Filters value={filters} onChange={setFilters} onClear={() => setFilters(EMPTY_FILTERS)} categories={categories} />
                 <p className="mt-2 text-xs text-muted-foreground">
                   Showing {filteredRows.length} of {parsed.transactions.length} records
                 </p>

@@ -11,6 +11,7 @@ export interface FiltersState {
   date_from: string;
   date_to: string;
   direction: "all" | "debit" | "credit";
+  category: string;
   amount_min: string;
   amount_max: string;
 }
@@ -21,6 +22,7 @@ export const EMPTY_FILTERS: FiltersState = {
   date_from: "",
   date_to: "",
   direction: "all",
+  category: "",
   amount_min: "",
   amount_max: "",
 };
@@ -29,15 +31,16 @@ interface FiltersProps {
   value: FiltersState;
   onChange: (next: FiltersState) => void;
   onClear: () => void;
+  categories?: string[];
 }
 
-export function Filters({ value, onChange, onClear }: FiltersProps) {
+export function Filters({ value, onChange, onClear, categories }: FiltersProps) {
   const set = <K extends keyof FiltersState>(key: K, val: FiltersState[K]) =>
     onChange({ ...value, [key]: val });
 
   const hasActive =
     value.q || value.preset !== "all" || value.date_from || value.date_to ||
-    value.direction !== "all" || value.amount_min || value.amount_max;
+    value.direction !== "all" || value.category || value.amount_min || value.amount_max;
 
   return (
     <div className="flex flex-wrap items-end gap-2 rounded-xl border bg-card p-3">
@@ -82,6 +85,14 @@ export function Filters({ value, onChange, onClear }: FiltersProps) {
         <option value="debit">Debit only</option>
         <option value="credit">Credit only</option>
       </Select>
+      {categories && categories.length > 0 && (
+        <Select value={value.category} onChange={(e) => set("category", e.target.value)}>
+          <option value="">All categories</option>
+          {categories.map((c) => (
+            <option key={c} value={c}>{c}</option>
+          ))}
+        </Select>
+      )}
       <Input
         type="number"
         placeholder="Min amount"
