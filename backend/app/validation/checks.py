@@ -37,6 +37,8 @@ def _check_running_balance(
         if t.is_beginning_balance:
             prev = t.balance
             continue
+        if t.is_ending_balance:
+            continue
         if t.balance is not None and prev is not None:
             expected = (prev or 0.0) + (t.credit or 0.0) - (t.debit or 0.0)
             if abs(expected - t.balance) > 0.01:
@@ -162,6 +164,8 @@ def _check_missing(
     for i, t in enumerate(transactions):
         if t.is_beginning_balance:
             prev = t.balance
+            continue
+        if t.is_ending_balance:
             continue
         if t.balance is not None and prev is not None:
             expected = (prev or 0.0) + (t.credit or 0.0) - (t.debit or 0.0)

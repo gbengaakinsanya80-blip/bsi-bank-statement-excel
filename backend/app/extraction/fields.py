@@ -64,6 +64,14 @@ def looks_like_date(text: str) -> bool:
     return DATE_RE.search(text) is not None
 
 
+def is_exact_date(text: str) -> bool:
+    """True when the whole token is a date (e.g. ``13/09/2022``), as opposed
+    to merely containing one (e.g. a narration with an embedded date)."""
+    if not text:
+        return False
+    return DATE_RE.fullmatch(text.strip()) is not None
+
+
 def parse_date(text: str, day_first: bool = True) -> Optional[date]:
     """Parse a single date token. Returns None when not parseable."""
     if not text:

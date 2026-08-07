@@ -8,6 +8,7 @@ the open transaction, joining descriptions and filling any missing amounts.
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
 from typing import Optional
 
@@ -20,7 +21,13 @@ from app.extraction.bank_templates import (
     label_is_opening,
 )
 from app.extraction.description import clean_description, extract_reference, join_parts
-from app.extraction.fields import looks_like_amount, looks_like_date, parse_amount, parse_signed_amount
+from app.extraction.fields import (
+    is_exact_date,
+    looks_like_amount,
+    looks_like_date,
+    parse_amount,
+    parse_signed_amount,
+)
 from app.extraction.layout import Layout
 from app.extraction.pdf_reader import Line
 
@@ -52,6 +59,25 @@ class _RawRecord:
         )
 
 
+# Words that only ever appear on table headers / sub-headers. A line made
+# entirely of these (plus column keywords) with no digits is a header, not a
+# transaction row.
+_HEADER_ONLY_WORDS = {
+    "posted", "posting", "transaction", "running", "value", "val", "date",
+    "debit", "credit", "balance", "description", "narration", "reference",
+    "details", "remarks", "withdrawal", "deposit", "branch", "channel",
+    "instrument", "currency", "details", "post", "txn",
+}
+
+# Labels that appear in per-page summary blocks above the table (never in
+# transaction rows). Only consulted for lines above a page's table header.
+_SUMMARY_LABEL_RE = re.compile(
+    r"(account\s*number|acct\.?\s*no\.?|currency|"
+    r"total\s+(debit|credit|amount)|period|statement\s+period)\b",
+    re.IGNORECASE,
+)
+
+
 def parse_rows(
     lines: list[Line],
     layout: Layout,
@@ -62,10 +88,22 @@ def parse_rows(
     cur: Optional[_RawRecord] = None
     single_amount_col = not _has_separate_columns(layout)
 
+    page_headers = _detect_page_headers(lines, header_line_no)
+    header_opening: Optional[_RawRecord] = None
+    header_closing: Optional[_RawRecord] = None
+
     for line in lines:
-        if header_line_no >= 0 and line.line_no <= header_line_no:
+        if _is_header_line(line) or _is_sub_header_line(line):
             continue
-        if _is_header_line(line):
+
+        # Lines above a page's table header are the banner / per-page summary
+        # block. They are never transactions; only the first opening/closing
+        # balance labels are kept (they carry the statement's real balances).
+        boundary = page_headers.get(line.page_index, -1)
+        if boundary >= 0 and line.line_no <= boundary:
+            header_opening, header_closing = _capture_header_balance(
+                line, layout, header_opening, header_closing
+            )
             continue
 
         assigned = _assign_line(line, layout, single_amount_col)
@@ -124,7 +162,105 @@ def parse_rows(
 
     if cur is not None:
         records.append(cur)
-    return [r for r in records if r.has_content()]
+
+    # Opening balance belongs first, closing balance last.
+    if header_opening is not None:
+        records.insert(0, header_opening)
+    if header_closing is not None and not any(r.is_closing for r in records):
+        records.append(header_closing)
+    return [r for r in records if _is_transaction_like(r)]
+
+
+def _is_transaction_like(r: _RawRecord) -> bool:
+    """A record without a date, amount, balance, reference or balance flag is
+    stray prose (e.g. the footer disclaimer), not a transaction."""
+    return bool(
+        r.is_opening
+        or r.is_closing
+        or r.debit is not None
+        or r.credit is not None
+        or r.balance is not None
+        or r.date_tokens
+        or r.value_date_tokens
+        or r.reference
+    )
+
+
+def _detect_page_headers(lines: list[Line], global_header_line_no: int) -> dict[int, int]:
+    """First table-header line per page, used to skip the banner + per-page
+    summary block that precedes the table on every page."""
+    page_headers: dict[int, int] = {}
+    for line in lines:
+        page = line.page_index
+        if page in page_headers:
+            continue
+        if _is_header_line(line) or _is_sub_header_line(line):
+            page_headers[page] = line.line_no
+    if global_header_line_no >= 0:
+        page_headers.setdefault(0, global_header_line_no)
+    return page_headers
+
+
+def _capture_header_balance(
+    line: Line,
+    layout: Layout,
+    header_opening: Optional[_RawRecord],
+    header_closing: Optional[_RawRecord],
+) -> tuple[Optional[_RawRecord], Optional[_RawRecord]]:
+    text = line.text.strip()
+    if label_is_opening(text) and header_opening is None:
+        return _make_balance_record(line, layout, opening=True), header_closing
+    if label_is_closing(text) and header_closing is None:
+        return header_opening, _make_balance_record(line, layout, opening=False)
+    return header_opening, header_closing
+
+
+def _make_balance_record(line: Line, layout: Layout, *, opening: bool) -> _RawRecord:
+    balance = None
+    for w in line.words:
+        if layout.assign(w) == "balance":
+            v = parse_amount(w.text)
+            if v is not None:
+                balance = v
+                break
+    if balance is None:
+        for w in line.words:
+            if looks_like_amount(w.text):
+                v = parse_amount(w.text)
+                if v is not None:
+                    balance = v
+                    break
+    rec = _RawRecord(
+        page=line.page_index + 1,
+        line_no=line.line_no,
+        is_opening=opening,
+        is_closing=not opening,
+    )
+    rec.balance = balance
+    rec.desc_parts = ["Opening Balance"] if opening else ["Closing Balance"]
+    return rec
+
+
+def _is_sub_header_line(line: Line) -> bool:
+    """True for repeated sub-headers like ``POSTED DATE`` or ``VALUE DATE``."""
+    from app.extraction.layout import COLUMN_KEYWORDS, _match_fields
+
+    if not _match_fields(line):
+        return False
+    known = set(_HEADER_ONLY_WORDS)
+    for kws in COLUMN_KEYWORDS.values():
+        for kw in kws:
+            known.update(kw.split())
+    tokens = [re.sub(r"[^a-z]", "", w.text.lower()) for w in line.words if w.text.strip()]
+    tokens = [t for t in tokens if t]
+    if not tokens:
+        return False
+    for tok in tokens:
+        if any(ch.isdigit() for ch in tok):
+            return False
+        if tok not in known:
+            return False
+    return True
 
 
 def _has_separate_columns(layout: Layout) -> bool:
@@ -153,37 +289,46 @@ def _assign_line(line: Line, layout: Layout, single_amount_col: bool) -> dict:
     for w in line.words:
         field = layout.assign(w)
         if field == "date":
-            dates.append(w.text)
+            if is_exact_date(w.text):
+                dates.append(w.text)
+            else:
+                desc_words.append(w.text)
         elif field == "value_date":
-            value_dates.append(w.text)
+            if is_exact_date(w.text):
+                value_dates.append(w.text)
+            else:
+                desc_words.append(w.text)
         elif field == "reference":
             ref_words.append(w.text)
         elif field == "description":
             desc_words.append(w.text)
         elif field == "debit":
-            debit_tokens.append(w.text)
+            if looks_like_date(w.text):
+                desc_words.append(w.text)
+            else:
+                debit_tokens.append(w.text)
         elif field == "credit":
-            credit_tokens.append(w.text)
+            if looks_like_date(w.text):
+                desc_words.append(w.text)
+            else:
+                credit_tokens.append(w.text)
         elif field == "balance":
-            balance_tokens.append(w.text)
+            if looks_like_date(w.text):
+                desc_words.append(w.text)
+            else:
+                balance_tokens.append(w.text)
         elif field in ("branch", "channel", "instrument", "currency"):
             desc_words.append(w.text)
         else:
-            # Unassigned word — decide by content.
-            if has_date_col:
-                if looks_like_date(w.text):
-                    dates.append(w.text)
-                elif looks_like_amount(w.text):
-                    amount_tokens.append(w.text)
-                else:
-                    desc_words.append(w.text)
+            # Unassigned word — decide by content. Only a token that is
+            # exactly a date belongs in the date column; a narration that
+            # merely contains a date is description text.
+            if is_exact_date(w.text):
+                dates.append(w.text)
+            elif looks_like_amount(w.text):
+                amount_tokens.append(w.text)
             else:
-                if looks_like_date(w.text):
-                    dates.append(w.text)
-                elif looks_like_amount(w.text):
-                    amount_tokens.append(w.text)
-                else:
-                    desc_words.append(w.text)
+                desc_words.append(w.text)
 
     debit = _join_amount(debit_tokens, in_debit_column=True) if debit_tokens else None
     credit = _join_amount(credit_tokens, in_debit_column=False) if credit_tokens else None

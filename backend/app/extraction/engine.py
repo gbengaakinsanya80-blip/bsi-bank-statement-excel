@@ -188,6 +188,8 @@ def reconcile_transactions(transactions: list[Transaction]) -> list[Transaction]
         if t.is_beginning_balance:
             prev = t.balance
             continue
+        if t.is_ending_balance:
+            continue
         if t.balance is None:
             if prev is not None and (t.credit is not None or t.debit is not None):
                 prev = prev + (t.credit or 0.0) - (t.debit or 0.0)
@@ -232,11 +234,22 @@ def reconcile_transactions(transactions: list[Transaction]) -> list[Transaction]
 
 
 def dedupe_transactions(transactions: list[Transaction]) -> list[Transaction]:
-    """Remove exact duplicate records (same fingerprint), keeping the first."""
+    """Remove exact duplicate records (same fingerprint), keeping the first.
+
+    Repeated per-page opening/closing balance rows (same flag + balance) are
+    also collapsed to a single row.
+    """
     seen: set[str] = set()
     out: list[Transaction] = []
     for t in transactions:
         if t.is_beginning_balance or t.is_ending_balance:
+            key = (
+                f"flag:{int(t.is_beginning_balance)}:{int(t.is_ending_balance)}:"
+                f"{t.balance or 0.0:.2f}"
+            )
+            if key in seen:
+                continue
+            seen.add(key)
             out.append(t)
             continue
         fp = t.fingerprint()

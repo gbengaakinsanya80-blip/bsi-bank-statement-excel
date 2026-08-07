@@ -13,7 +13,7 @@ from app.extraction.pdf_reader import Line, Word
 
 # Field keyword aliases, ordered most-specific first per field.
 COLUMN_KEYWORDS: dict[str, list[str]] = {
-    "value_date": ["value date", "val date"],
+    "value_date": ["value date", "val date", "value"],
     "date": ["date", "posting date", "trans date", "txn date", "transaction date"],
     "reference": ["reference", "ref no", "ref num", "ref number", "transaction reference"],
     "description": ["description", "narration", "details", "remarks", "transaction details"],
