@@ -77,6 +77,16 @@ _SUMMARY_LABEL_RE = re.compile(
     re.IGNORECASE,
 )
 
+# Footer disclaimers printed below the table. A line that matches one of these
+# and carries no amounts/balance is prose, not a transaction.
+_FOOTER_PROSE_RE = re.compile(
+    r"(please\s*examine\s*this\s*statement|verify\s*all\s*entries|"
+    r"system.{0,3}generated|this\s*is\s*a\s*(computer|system)|"
+    r"do\s*not\s*honour|account\s*statement\s*is\s*issued|"
+    r"total\s+debit|total\s+credit|closing\s+balance)",
+    re.IGNORECASE,
+)
+
 
 def parse_rows(
     lines: list[Line],
@@ -168,7 +178,20 @@ def parse_rows(
         records.insert(0, header_opening)
     if header_closing is not None and not any(r.is_closing for r in records):
         records.append(header_closing)
-    return [r for r in records if _is_transaction_like(r)]
+    return [r for r in records if _is_transaction_like(r) and not _is_junk_record(r)]
+
+
+def _is_junk_record(r: _RawRecord) -> bool:
+    """Footer prose and empty phantom lines (no amounts, no balance) are not
+    transactions. Date-only rows with an empty description are OCR noise."""
+    if r.is_opening or r.is_closing:
+        return False
+    if r.debit is not None or r.credit is not None or r.balance is not None:
+        return False
+    desc = " ".join(r.desc_parts).strip()
+    if not desc:
+        return True
+    return bool(_FOOTER_PROSE_RE.search(desc))
 
 
 def _is_transaction_like(r: _RawRecord) -> bool:

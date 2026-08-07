@@ -199,12 +199,30 @@ def reconcile_transactions(transactions: list[Transaction]) -> list[Transaction]
         has_debit = t.debit is not None
         has_credit = t.credit is not None
 
+        if has_debit and has_credit:
+            # Both columns filled (a duplicated amount): keep only the one that
+            # agrees with the observed balance movement.
+            if delta < 0:
+                t.credit = None
+            elif delta > 0:
+                t.debit = None
+            has_debit = t.debit is not None
+            has_credit = t.credit is not None
+
         if has_debit or has_credit:
-            # Which amount matches the observed delta (ignoring sign)?
+            # Which amount matches the observed delta, sign included?
             if has_credit and abs(t.credit) == abs(delta):
-                t.credit = abs(delta)
+                if delta < 0:
+                    t.debit = abs(t.credit)
+                    t.credit = None
+                else:
+                    t.credit = abs(delta)
             elif has_debit and abs(t.debit) == abs(delta):
-                t.debit = abs(delta)
+                if delta > 0:
+                    t.credit = abs(t.debit)
+                    t.debit = None
+                else:
+                    t.debit = abs(delta)
             elif has_debit and not has_credit:
                 # Amount present but sign disagrees -> it belongs in the other column.
                 if delta > 0:
@@ -216,12 +234,6 @@ def reconcile_transactions(transactions: list[Transaction]) -> list[Transaction]
                 if delta < 0:
                     t.debit = t.credit
                     t.credit = None
-            else:
-                # Both set: trust the one that matches the sign of delta.
-                if delta < 0 and t.debit is not None:
-                    t.credit = None
-                elif delta > 0 and t.credit is not None:
-                    t.debit = None
         else:
             # No amount extracted: infer it from the balance movement.
             if delta < 0:

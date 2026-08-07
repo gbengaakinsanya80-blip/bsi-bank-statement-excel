@@ -263,3 +263,93 @@ def test_zenith_per_page_summary_block_is_not_parsed_as_transactions() -> None:
     for needle in ("account number", "1011653449", "total debit", "total credit", "period"):
         assert needle not in joined
     assert not any(t.description == "posted date" for t in txs)
+
+
+def test_reconcile_drops_duplicated_amount_in_other_column() -> None:
+    """A row where OCR duplicated the settlement amount into BOTH the debit
+    and credit columns must keep only the side matching the balance movement."""
+    from app.core.models import Transaction
+
+    def tx(line, desc, debit, credit, balance):
+        return Transaction(
+            tx_date=None, value_date=None, description=desc, reference="",
+            debit=debit, credit=credit, balance=balance, currency="NGN",
+            page_number=6, line_number=line,
+        )
+
+    txs = reconcile_transactions([
+        tx(397, "VAT on Commission 2057FC999982025-20-10-2022", 1.01, None, 23_052.63),
+        tx(399, "POS Settlement for 2057FC999982025-21-10-2022", None, 58_850.0, 81_902.63),
+        tx(400, "Pos stamp duty sett comm for 2057FC999982025-21-10-2022", 50.0, 58_850.0, 81_852.63),
+    ])
+    by_line = {t.line_number: t for t in txs}
+    assert by_line[399].credit == pytest.approx(58_850.0)
+    assert by_line[399].debit is None
+    assert by_line[400].debit == pytest.approx(50.0)
+    assert by_line[400].credit is None
+
+
+def test_reconcile_moves_amount_to_credit_when_balance_increases() -> None:
+    """A POS Settlement parsed into the debit column must flip to credit when
+    the running balance increased by exactly its amount."""
+    from app.core.models import Transaction
+
+    def tx(line, desc, debit, credit, balance):
+        return Transaction(
+            tx_date=None, value_date=None, description=desc, reference="",
+            debit=debit, credit=credit, balance=balance, currency="NGN",
+            page_number=4, line_number=line,
+        )
+
+    txs = reconcile_transactions([
+        tx(239, "NIP/GTB/OLABODEOLANREWAJU/REF23449862000", 64_400.0, None, 124_431.78),
+        tx(240, "POS Settlement for 2057FC999982025-30-09-2022", 46_650.0, None, 171_081.78),
+    ])
+    by_line = {t.line_number: t for t in txs}
+    assert by_line[240].credit == pytest.approx(46_650.0)
+    assert by_line[240].debit is None
+
+
+def test_footer_prose_and_date_only_phantom_lines_are_not_parsed() -> None:
+    """Footer disclaimers and date-only phantom rows (no amounts/balance,
+    no description) must never become transactions."""
+    from app.core.models import Transaction
+
+    header_words = [
+        (22.0, 47.0, "DATE"),
+        (81.0, 111.0, "VALUE"),
+        (204.0, 262.0, "DESCRIPTION"),
+        (383.0, 412.0, "DEBIT"),
+        (445.0, 478.0, "CREDIT"),
+        (517.0, 557.0, "BALANCE"),
+    ]
+    lines: list[Line] = []
+    no = 0
+    lines.append(_mk_line(0, no := no + 1, 40.0, header_words))
+    lines.append(_mk_line(0, no := no + 1, 60.0, [
+        (22.0, 59.0, "13/09/2022"),
+        (70.0, 109.0, "13/09/2022"),
+        (120.0, 285.0, "POS Settlement for 2057FC999982025-13-09-2022"),
+        (445.0, 478.0, "78,300.00"),
+        (517.0, 557.0, "131,713.00"),
+    ]))
+    # Date-only phantom row (empty description, no amounts/balance).
+    lines.append(_mk_line(0, no := no + 1, 80.0, [(22.0, 59.0, "27/09/2022")]))
+    # Footer disclaimer prose with a date embedded.
+    lines.append(_mk_line(0, no := no + 1, 100.0, [
+        (120.0, 285.0, "PLEASE EXAMINE THIS STATEMENT AT ONCE"),
+        (22.0, 59.0, "29/09/2022"),
+    ]))
+
+    layout = detect_layout(lines, 612.0, 843.0)
+    template, _conf = detect_bank("\n".join(l.text for l in lines[:60]))
+    records = parse_rows(lines, layout, template, header_line_no=layout.header_line_no)
+    txs = to_transactions(records, template)
+    txs = reconcile_transactions(txs)
+
+    assert len(txs) == 1
+    assert txs[0].description == "POS Settlement for 2057FC999982025-13-09-2022"
+    assert txs[0].credit == pytest.approx(78_300.0)
+    assert txs[0].balance == pytest.approx(131_713.0)
+    assert not any("examine" in (t.description or "").lower() for t in txs)
+    assert not any(t.tx_date is not None and t.debit is None and t.credit is None and t.balance is None for t in txs)
