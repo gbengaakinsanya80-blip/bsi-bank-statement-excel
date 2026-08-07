@@ -93,6 +93,24 @@ def test_unknown_or_generic_pdf_falls_back_to_general(engine) -> None:
     assert len(parsed.validation.all_issues) <= len(parsed.transactions)
 
 
+@pytest.mark.parametrize("bank", ["Zenith Bank", "First Bank"])
+def test_total_amount_row_and_summary_heading_are_ignored(engine, bank: str) -> None:
+    """Real Zenith statements carry a "SUMMARY OF ACCOUNT" heading and a
+    "TOTAL AMOUNT" row before the closing balance. Neither may leak into the
+    extracted transactions or break balance reconciliation."""
+    tmp = pathlib.Path(tempfile.mkdtemp())
+    pdf = tmp / "stmt.pdf"
+    truth = build_statement_pdf(pdf, bank=bank, n_transactions=25, seed=13, zenith_style=True)
+    parsed = _run_extraction(engine, pdf)
+
+    real = [t for t in parsed.transactions if not t.is_beginning_balance and not t.is_ending_balance]
+    assert len(real) == len(truth["transactions"]) == 25
+    assert len(parsed.validation.all_issues) == 0, [i.message for i in parsed.validation.all_issues]
+    assert parsed.validation.balance_reconciled
+    assert not any("total" in (t.description or "").lower() for t in real)
+    assert not any("summary" in (t.description or "").lower() for t in real)
+
+
 def test_scanned_pdf_detected_and_degrades_gracefully(engine) -> None:
     tmp = pathlib.Path(tempfile.mkdtemp())
     pdf = tmp / "scan.pdf"

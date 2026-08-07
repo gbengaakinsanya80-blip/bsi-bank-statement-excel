@@ -157,12 +157,21 @@ export interface InsightsReport {
   tax: TaxSummary | null;
 }
 
+export interface AccountHead {
+  name: string;
+  debit_total: number;
+  credit_total: number;
+  transaction_count: number;
+  net: number;
+}
+
 export interface ParseResult {
   meta: Meta;
   transactions: Transaction[];
   validation: ValidationReport;
   summary: Summary;
   insights: InsightsReport;
+  account_heads: AccountHead[];
   columns_detected: ColumnsDetected;
   raw_pages: string[];
 }

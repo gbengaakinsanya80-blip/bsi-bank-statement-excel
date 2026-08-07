@@ -436,7 +436,8 @@ def filter_noise_lines(lines: list[Line]) -> list[Line]:
 _NOISE_RE = (
     re.compile(r"^\d{1,4}\s*/\s*\d{1,4}$"),                      # page x of y
     re.compile(r"^page\s*\d+.*", re.IGNORECASE),
-    re.compile(r"statement of account|statement summary", re.IGNORECASE),
+    re.compile(r"statement of account|statement summary|summary of account", re.IGNORECASE),
+    re.compile(r"^total\s+(amount|debit|debits|credit|credits|balance|bought|paid|received|withdrawn)\b", re.IGNORECASE),  # Zenith "TOTAL AMOUNT" closing rows
     re.compile(r"^(tel|address|customer care|email|website|www\.)", re.IGNORECASE),
     re.compile(r"^generated\s+on", re.IGNORECASE),
     re.compile(r"^print\s+date", re.IGNORECASE),

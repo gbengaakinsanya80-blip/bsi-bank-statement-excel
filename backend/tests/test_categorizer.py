@@ -53,3 +53,65 @@ def test_default_other() -> None:
 
 def test_empty_description_stays_other() -> None:
     assert categorize("   ") == DEFAULT_CATEGORY
+
+
+def test_rent() -> None:
+    assert categorize("RENT PAYMENT FOR JANUARY") == "Rent & Accommodation"
+
+
+def test_utilities_bills() -> None:
+    assert categorize("WATER BILL PAYMENT") == "Bills"
+    assert categorize("MTN DATA SUBSCRIPTION") == "Bills"
+
+
+def test_food_and_groceries() -> None:
+    assert categorize("SHOPRITE IKEJA") == "Food & Groceries"
+    assert categorize("RESTAURANT PAYMENT") == "Food & Groceries"
+
+
+def test_fuel_and_transport() -> None:
+    assert categorize("TOTAL PETROL STATION") == "Transport & Fuel"
+    assert categorize("UBER RIDE") == "Transport & Fuel"
+
+
+def test_education() -> None:
+    assert categorize("SCHOOL FEES TERM 2") == "Education"
+
+
+def test_health() -> None:
+    assert categorize("PHARMACY PURCHASE") == "Health & Medical"
+
+
+def test_customer_receipts_beats_transfer() -> None:
+    assert categorize("PAYMENT RECEIVED FROM CLIENT XYZ") == "Customer Receipts"
+
+
+def test_business_expense() -> None:
+    assert categorize("OFFICE SUPPLIES PURCHASE") == "Business Expense"
+
+
+def test_insurance() -> None:
+    assert categorize("MOTOR INSURANCE PREMIUM") == "Insurance"
+
+
+def test_entertainment() -> None:
+    assert categorize("CINEMA TICKETS") == "Entertainment"
+
+
+def test_donation() -> None:
+    assert categorize("CHURCH TITHE") == "Donation & Charity"
+
+
+def test_government() -> None:
+    assert categorize("LASG TAX PAYMENT") == "Government & Authorities"
+
+
+def test_loan_repayment_distinct_from_loan() -> None:
+    assert categorize("LOAN REPAYMENT MONTHLY") == "Loan Repayment"
+    assert categorize("LOAN DISBURSEMENT") == "Loan"
+
+
+def test_word_boundaries_avoid_false_positives() -> None:
+    assert categorize("POSITION STATEMENT") == DEFAULT_CATEGORY
+    assert categorize("ATMOSPHERE PHOTOGRAPHY") == DEFAULT_CATEGORY
+    assert categorize("TRANSFEROR ADMIN") == DEFAULT_CATEGORY

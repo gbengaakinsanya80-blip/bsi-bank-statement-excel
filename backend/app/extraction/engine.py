@@ -51,7 +51,7 @@ class ExtractionEngine:
         lines = self._build_lines(doc)
 
         first = doc.pages[0]
-        header_text = "\n".join(l.text for l in lines[:40])
+        header_text = "\n".join(l.text for l in lines[:60])
         template, bank_confidence = detect_bank(header_text)
         layout = detect_layout(lines, first.width, first.height)
 

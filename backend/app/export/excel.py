@@ -32,6 +32,7 @@ def build_excel(parsed: ParsedStatement) -> BytesIO:
 
     _write_transactions(wb.active, parsed)
     _write_summary(wb.create_sheet("Summary"), parsed)
+    _write_account_heads(wb.create_sheet("Account Heads"), parsed)
     _write_validation(wb.create_sheet("Validation"), parsed)
     _write_insights(wb.create_sheet("Insights"), parsed)
     _write_charts(wb.create_sheet("Charts"), parsed)
@@ -137,6 +138,46 @@ def _write_summary(ws, parsed: ParsedStatement) -> None:
         ws.cell(row=i, column=3, value=m["debits"]).number_format = MONEY
         ws.cell(row=i, column=4, value=m["net"]).number_format = MONEY
     _autosize(ws, ["Statistic", "Value"])
+
+
+def _write_account_heads(ws, parsed: ParsedStatement) -> None:
+    headers = ["Account Head", "Transactions", "Debits", "Credits", "Net", "Share %"]
+    ws.append(headers)
+    _style_header(ws, 1, len(headers))
+
+    heads = parsed.account_heads
+    total_turnover = sum(h.debit_total + h.credit_total for h in heads) or 0.0
+    total_tx = sum(h.transaction_count for h in heads)
+    for i, head in enumerate(heads, start=2):
+        share = (100.0 * (head.debit_total + head.credit_total) / total_turnover) if total_turnover else 0.0
+        ws.append([
+            head.name,
+            head.transaction_count,
+            head.debit_total,
+            head.credit_total,
+            head.net,
+            round(share, 2),
+        ])
+        for col in range(1, len(headers) + 1):
+            ws.cell(row=i, column=col).border = BORDER
+            if i % 2 == 0:
+                ws.cell(row=i, column=col).fill = ALT_FILL
+        for col in (3, 4, 5):
+            ws.cell(row=i, column=col).number_format = MONEY
+        ws.cell(row=i, column=6).number_format = "0.00"
+
+    if heads:
+        total_row = len(heads) + 2
+        ws.cell(row=total_row, column=1, value="Total").font = Font(bold=True)
+        ws.cell(row=total_row, column=2, value=total_tx).font = Font(bold=True)
+        ws.cell(row=total_row, column=3, value=sum(h.debit_total for h in heads)).font = Font(bold=True)
+        ws.cell(row=total_row, column=4, value=sum(h.credit_total for h in heads)).font = Font(bold=True)
+        ws.cell(row=total_row, column=5, value=sum(h.net for h in heads)).font = Font(bold=True)
+        for col in (3, 4, 5):
+            ws.cell(row=total_row, column=col).number_format = MONEY
+
+    _autosize(ws, headers)
+    ws.freeze_panes = "A2"
 
 
 def _write_validation(ws, parsed: ParsedStatement) -> None:

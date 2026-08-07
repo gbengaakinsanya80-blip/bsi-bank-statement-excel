@@ -14,10 +14,15 @@ from app.core.models import SummaryStats, Transaction
 
 # Categories treated as business/revenue-generating spend. ATM cash, loan,
 # investment and tax payments themselves are excluded.
-BUSINESS_CATEGORIES = {"POS", "Transfer", "Bills", "Charges"}
+BUSINESS_CATEGORIES = {
+    "POS", "Transfer", "Bills", "Charges", "Business Expense",
+    "Food & Groceries", "Transport & Fuel", "Shopping & Retail",
+    "Rent & Accommodation", "Insurance", "Education", "Health & Medical",
+    "Entertainment", "Donation & Charity", "Cash",
+}
 
 # Categories that most plausibly include VAT (goods & services purchases).
-VAT_CATEGORIES = {"POS", "Bills"}
+VAT_CATEGORIES = {"POS", "Bills", "Food & Groceries", "Shopping & Retail", "Business Expense", "Entertainment"}
 
 # Nigerian VAT is 7.5%. For a VAT-inclusive price P the VAT = P * 0.075 / 1.075.
 VAT_RATE = 0.075
@@ -81,7 +86,7 @@ def estimate_tax(
     result.vat_estimate = round(vat_base * _EMBEDDED, 2)
     result.business_category_breakdown = {k: round(v, 2) for k, v in sorted(by_category.items(), key=lambda kv: kv[1], reverse=True)}
     result.notes = [
-        f"Business-related spending (POS, transfers, bills, charges) totals {_fmt(business_total)}.",
+        f"Business-related spending (POS, transfers, bills, charges and other expense heads) totals {_fmt(business_total)}.",
         f"Conservative tax-deductible estimate is {_fmt(conservative)} — 50% of transfers assumed business.",
         f"Estimated VAT embedded in purchases (POS + bills at {VAT_RATE * 100:.1f}%) is {_fmt(result.vat_estimate)}.",
         "These are automated estimates for review only, not tax advice. Confirm with your accountant.",

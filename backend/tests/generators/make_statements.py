@@ -117,9 +117,15 @@ def build_statement_pdf(
     split_desc: bool = False,
     opening: float = 500_000.00,
     seed: int = 7,
+    zenith_style: bool = False,
 ) -> dict:
     """Build an internally consistent statement PDF. Returns the expected
-    transaction list (ground truth) for tests."""
+    transaction list (ground truth) for tests.
+
+    ``zenith_style`` mimics real Zenith statements: a "SUMMARY OF ACCOUNT"
+    heading above the table and a "TOTAL AMOUNT <debits> <credits>" row before
+    the closing balance row. Both must be ignored by the engine.
+    """
     rng = random.Random(seed)
     schema = SCHEMAS.get(bank, SCHEMAS["First Bank"])
     txs = generate_transactions(n_transactions, seed=seed, split_desc=split_desc, opening=opening)
@@ -177,6 +183,18 @@ def build_statement_pdf(
     closing_row["Balance"] = _money(closing)
     data.append([Paragraph(str(closing_row.get(c, "")), _s()) for c in schema])
 
+    if zenith_style:
+        total_debit = sum(t["debit"] or 0.0 for t in txs)
+        total_credit = sum(t["credit"] or 0.0 for t in txs)
+        total_row = {c: "" for c in schema}
+        total_row["Description"] = "TOTAL AMOUNT"
+        total_row["Narration"] = "TOTAL AMOUNT"
+        total_row["Debit"] = _money(total_debit) if total_debit else ""
+        total_row["Credit"] = _money(total_credit) if total_credit else ""
+        data.append([Paragraph(str(total_row.get(c, "")), _s()) for c in schema])
+        # Move the total row to sit just before the closing balance row.
+        data[-1], data[-2] = data[-2], data[-1]
+
     widths = [COL_WIDTHS[c] * mm for c in schema]
     table = Table(data, colWidths=widths, repeatRows=1)
     style = [
@@ -200,11 +218,14 @@ def build_statement_pdf(
         Paragraph("STATEMENT OF ACCOUNT", _s()),
         Spacer(1, 2 * mm),
         Paragraph(f"Account Name: {account_name}", _s()),
-        Paragraph(f"Account Number: {account_number}", _s()),
+        Paragraph("Account Number: {account_number}", _s()),
         Paragraph(f"Period: {_fmt(date(2025, 1, 1))} - {_fmt(date(2025, 12, 31))}", _s()),
         Spacer(1, 4 * mm),
         table,
     ]
+    if zenith_style:
+        story.insert(3, Paragraph("SUMMARY OF ACCOUNT", _s()))
+        story.insert(4, Spacer(1, 1 * mm))
     doc.build(story)
 
     expected = {

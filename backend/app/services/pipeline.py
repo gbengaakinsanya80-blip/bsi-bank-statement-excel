@@ -8,6 +8,7 @@ from datetime import date
 from typing import Any, Callable, Optional
 
 from app.core.models import (
+    AccountHead,
     Anomaly,
     Forecast,
     ForecastMonth,
@@ -47,6 +48,7 @@ def process_file(
 
 
 def _attach_insights(parsed: ParsedStatement) -> None:
+    from app.analysis.account_heads import compute_account_heads
     from app.analysis.anomalies import detect_anomalies
     from app.analysis.forecast import forecast_cashflow
     from app.analysis.insights import generate_insights
@@ -57,6 +59,7 @@ def _attach_insights(parsed: ParsedStatement) -> None:
     report.forecast = forecast_cashflow(parsed.transactions, parsed.summary)
     report.tax = estimate_tax(parsed.transactions, parsed.summary)
     parsed.insights = report
+    parsed.account_heads = compute_account_heads(parsed.transactions)
 
 
 # ---------------------------------------------------------------------- #
@@ -136,9 +139,22 @@ def rehydrate_parsed(data: dict[str, Any]) -> ParsedStatement:
         validation=validation,
         summary=summary,
         insights=_rehydrate_insights(data.get("insights", {})),
+        account_heads=_rehydrate_account_heads(data.get("account_heads", [])),
         columns_detected=data.get("columns_detected", {}),
         raw_pages=[],
     )
+
+
+def _rehydrate_account_heads(items: list[dict[str, Any]]) -> list[AccountHead]:
+    return [
+        AccountHead(
+            name=item.get("name", "Other"),
+            debit_total=item.get("debit_total", 0.0),
+            credit_total=item.get("credit_total", 0.0),
+            transaction_count=item.get("transaction_count", 0),
+        )
+        for item in items
+    ]
 
 
 def _parse_date(value: Optional[str]) -> Optional[date]:

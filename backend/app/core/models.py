@@ -207,6 +207,29 @@ class SummaryStats:
 
 
 @dataclass
+class AccountHead:
+    """A chart-of-accounts style head aggregated from categorised transactions."""
+
+    name: str
+    debit_total: float = 0.0
+    credit_total: float = 0.0
+    transaction_count: int = 0
+
+    @property
+    def net(self) -> float:
+        return round(self.credit_total - self.debit_total, 2)
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "name": self.name,
+            "debit_total": round(self.debit_total, 2),
+            "credit_total": round(self.credit_total, 2),
+            "transaction_count": self.transaction_count,
+            "net": self.net,
+        }
+
+
+@dataclass
 class Insight:
     """A single natural-language finding about the statement."""
 
@@ -376,6 +399,7 @@ class ParsedStatement:
     validation: ValidationReport
     summary: SummaryStats
     insights: InsightsReport = field(default_factory=InsightsReport)
+    account_heads: list[AccountHead] = field(default_factory=list)
     columns_detected: dict[str, Any] = field(default_factory=dict)
     raw_pages: list[Any] = field(default_factory=list)
 
@@ -400,6 +424,7 @@ class ParsedStatement:
             "validation": self.validation.to_dict(),
             "summary": self.summary.to_dict(),
             "insights": self.insights.to_dict(),
+            "account_heads": [h.to_dict() for h in self.account_heads],
             "columns_detected": self.columns_detected,
             "raw_pages": self.raw_pages if include_raw else [],
         }

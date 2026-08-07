@@ -76,7 +76,12 @@ BANK_TEMPLATES: list[BankTemplate] = [
     ),
     BankTemplate(
         name="Zenith Bank",
-        signatures=["zenith bank", "zenithbank"],
+        signatures=[
+            "zenith bank",
+            "zenithbank",
+            "zenith international bank",
+            "zenith",
+        ],
         amount_columns="debit_credit",
     ),
     BankTemplate(

@@ -2,7 +2,9 @@
 
 import * as React from "react";
 import { useSearchParams } from "next/navigation";
-import { AlertCircle, FileSpreadsheet, Layers, Pencil, Sparkles, Wand2 } from "lucide-react";
+import { AlertCircle, FileSpreadsheet, Layers, Pencil, Wand2 } from "lucide-react";
+import { Landing } from "@/components/Landing";
+import { AccountHeadsPanel } from "@/components/AccountHeadsPanel";
 import { applyEdits, getJob, getResult, triggerExport, uploadPdf, uploadPdfs, type TransactionEdit } from "@/lib/api";
 import type { ExportFormat, ParseResult, Transaction } from "@/lib/types";
 import { UploadDropzone } from "@/components/UploadDropzone";
@@ -238,44 +240,11 @@ function HomeContent() {
   }, [parsed]);
 
   return (
-    <main className="container py-8">
-      {phase === "idle" && (
-        <div className="relative">
-          <div aria-hidden className="pointer-events-none absolute -top-24 left-1/2 -z-10 h-[480px] w-[820px] -translate-x-1/2 overflow-hidden rounded-full bg-gradient-to-tr from-primary/25 via-indigo-400/15 to-emerald-400/15 blur-3xl" />
-          <div className="mx-auto max-w-3xl space-y-8">
-            <div className="space-y-4 text-center">
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-primary/20 bg-primary/5 px-3 py-1 text-xs font-medium text-primary">
-                <Sparkles className="h-3.5 w-3.5" />
-                AI-powered statement intelligence
-              </span>
-              <h1 className="bg-gradient-to-r from-foreground via-foreground to-primary bg-clip-text text-4xl font-black tracking-tight text-transparent sm:text-5xl">
-                Turn any bank statement into a clean Excel workbook
-              </h1>
-              <p className="mx-auto max-w-xl text-muted-foreground">
-                AI-powered extraction from text and scanned PDFs — every transaction, every balance,
-                mathematically validated, ready for accounting and audit.
-              </p>
-            </div>
-            <UploadDropzone onFiles={handleFile} multiple />
-            <div className="grid gap-3 sm:grid-cols-3">
-              {[
-                { icon: Sparkles, title: "Hybrid AI extraction", body: "OCR + layout detection understands any bank layout" },
-                { icon: FileSpreadsheet, title: "Professional Excel output", body: "Transactions, summary, validation, insights & charts" },
-                { icon: Layers, title: "Batch processing", body: "Upload several statements at once and switch between them" },
-              ].map(({ icon: Icon, title, body }) => (
-                <Card key={title} className="group border-primary/10 bg-card/70 backdrop-blur transition-colors hover:border-primary/30">
-                  <CardContent className="p-5">
-                    <Icon className="mb-3 h-6 w-6 text-primary transition-transform group-hover:scale-110" />
-                    <p className="text-sm font-semibold">{title}</p>
-                    <p className="mt-1 text-xs text-muted-foreground">{body}</p>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
+    <main>
+      {phase === "idle" && <Landing onFiles={handleFile} />}
 
+      {phase !== "idle" && (
+        <div className="container py-8">
       {phase === "processing" && (
         <div className="mx-auto max-w-2xl space-y-6">
           <UploadDropzone onFiles={handleFile} disabled multiple />
@@ -369,6 +338,8 @@ function HomeContent() {
 
           <SummaryCards summary={parsed.summary} />
 
+          <AccountHeadsPanel heads={parsed.account_heads ?? []} currency={parsed.summary.currency} />
+
           <div className="grid gap-4 lg:grid-cols-3">
             <div className="lg:col-span-2">
               <Card className="mb-4 p-4">
@@ -408,6 +379,8 @@ function HomeContent() {
               </div>
             </div>
           </footer>
+        </div>
+      )}
         </div>
       )}
     </main>
