@@ -6,6 +6,7 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
+import os
 import re
 import time
 from datetime import date
@@ -28,8 +29,13 @@ log = logging.getLogger(__name__)
 ProgressCallback = Optional[Callable[[int, str], None]]
 
 #: Max share of rows allowed to break the running-balance chain before the
-#: engine re-runs OCR with the next (slower, more accurate) backend.
-_BALANCE_ERROR_TOLERANCE = 0.05
+#: engine re-runs OCR with the next (slower, more accurate) backend. Tunable
+#: via BSI_BALANCE_ERROR_TOLERANCE so a deploy's gate can be adjusted without
+#: a code change. 0.10 admits fast engines that still land most rows (residual
+#: breaks are surfaced in the validation panel) while rejecting engines whose
+#: output is so broken the running balance almost never lines up (e.g. the
+#: Windows OCR pass at ~12% with exploded totals).
+_BALANCE_ERROR_TOLERANCE = float(os.environ.get("BSI_BALANCE_ERROR_TOLERANCE", "0.10"))
 
 
 class ExtractionEngine:
@@ -54,7 +60,7 @@ class ExtractionEngine:
         # many rows break the chain, re-OCR with the next engine. Per-engine
         # word caches make re-uploads of an already-seen file instant.
         result: Optional[ParsedStatement] = None
-        backends = [b for b in get_all_backends() if b.available()] if ocr else []
+        backends = self._order_backends(doc) if ocr else []
         for backend in backends:
             cb(8, f"OCR engine: {backend.name}")
             ocr_done = self._run_ocr(doc, cb, backend)
@@ -79,6 +85,41 @@ class ExtractionEngine:
 
         cb(95, "Finalising")
         return result
+
+    # ------------------------------------------------------------------ #
+    @staticmethod
+    def _order_backends(doc: PdfDocument) -> list[OCRBackend]:
+        """Order the OCR chain for a document.
+
+        A previously-seen document whose words are already cached for an
+        accurate engine is served from that cache first (instant + precise),
+        so re-uploads keep the best result. Otherwise the fast engines run
+        first and the slower accurate engines are tried only if the balance
+        gate rejects them.
+        """
+        available = [b for b in get_all_backends() if b.available()]
+        if not available:
+            return []
+        scanned = [p for p in doc.pages if p.image_path]
+        if not scanned:
+            return available
+        cache_dir = DATA_DIR / "ocr_cache"
+        cached_accurate: list[OCRBackend] = []
+        fast: list[OCRBackend] = []
+        uncached: list[OCRBackend] = []
+        for backend in available:
+            if backend.name not in ("windows", "tesseract"):
+                cached = all(
+                    ExtractionEngine._word_cache_path(cache_dir, p.image_path, backend.name).exists()
+                    for p in scanned
+                )
+                if cached:
+                    cached_accurate.append(backend)
+                else:
+                    uncached.append(backend)
+            else:
+                fast.append(backend)
+        return cached_accurate + fast + uncached
 
     # ------------------------------------------------------------------ #
     def _parse_document(
