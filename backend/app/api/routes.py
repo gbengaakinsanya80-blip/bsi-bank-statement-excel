@@ -31,6 +31,8 @@ def build_router(jobs: JobManager, store: Store) -> APIRouter:
 
     @router.get("/health")
     def health() -> dict:
+        import os
+
         from app.core.config import APP_NAME, VERSION
 
         from app.extraction.ocr import get_available_backend
@@ -40,6 +42,7 @@ def build_router(jobs: JobManager, store: Store) -> APIRouter:
             "status": "ok",
             "app": APP_NAME,
             "version": VERSION,
+            "commit": os.environ.get("RENDER_GIT_COMMIT") or "local",
             "ocr_backend": backend.name if backend else None,
         }
 
