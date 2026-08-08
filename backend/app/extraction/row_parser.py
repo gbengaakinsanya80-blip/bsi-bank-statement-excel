@@ -211,7 +211,13 @@ def _is_transaction_like(r: _RawRecord) -> bool:
 
 def _detect_page_headers(lines: list[Line], global_header_line_no: int) -> dict[int, int]:
     """First table-header line per page, used to skip the banner + per-page
-    summary block that precedes the table on every page."""
+    summary block that precedes the table on every page.
+
+    The layout-detected header line (when it exists) is authoritative: it is
+    the real table header, so it overrides any earlier match (e.g. a summary
+    block that happens to read like a sub-header such as ``PAY IN PAY OUT``).
+    Other pages fall back to their first header/sub-header line.
+    """
     page_headers: dict[int, int] = {}
     for line in lines:
         page = line.page_index
@@ -220,7 +226,10 @@ def _detect_page_headers(lines: list[Line], global_header_line_no: int) -> dict[
         if _is_header_line(line) or _is_sub_header_line(line):
             page_headers[page] = line.line_no
     if global_header_line_no >= 0:
-        page_headers.setdefault(0, global_header_line_no)
+        for line in lines:
+            if line.line_no == global_header_line_no:
+                page_headers[line.page_index] = line.line_no
+                break
     return page_headers
 
 
@@ -270,6 +279,8 @@ def _is_sub_header_line(line: Line) -> bool:
 
     if not _match_fields(line):
         return False
+    if any(any(ch.isdigit() for ch in w.text) for w in line.words):
+        return False
     known = set(_HEADER_ONLY_WORDS)
     for kws in COLUMN_KEYWORDS.values():
         for kw in kws:
@@ -307,6 +318,8 @@ def _assign_line(line: Line, layout: Layout, single_amount_col: bool) -> dict:
     credit_tokens: list[str] = []
     balance_tokens: list[str] = []
     amount_tokens: list[str] = []
+    date_fragments: list[str] = []
+    value_fragments: list[str] = []
     has_date_col = layout.column_for("date") is not None or layout.column_for("value_date") is not None
 
     for w in line.words:
@@ -314,11 +327,15 @@ def _assign_line(line: Line, layout: Layout, single_amount_col: bool) -> dict:
         if field == "date":
             if is_exact_date(w.text):
                 dates.append(w.text)
+            elif _is_date_fragment(w.text):
+                date_fragments.append(w.text)
             else:
                 desc_words.append(w.text)
         elif field == "value_date":
             if is_exact_date(w.text):
                 value_dates.append(w.text)
+            elif _is_date_fragment(w.text):
+                value_fragments.append(w.text)
             else:
                 desc_words.append(w.text)
         elif field == "reference":
@@ -353,6 +370,16 @@ def _assign_line(line: Line, layout: Layout, single_amount_col: bool) -> dict:
             else:
                 desc_words.append(w.text)
 
+    # A date split across adjacent word tokens (e.g. ``09 May 25`` as three
+    # separate words) is reconstructed from the fragments before the fragments
+    # fall through to the description.
+    recon_dates, leftover = _reconstitute_dates(date_fragments)
+    recon_values, value_leftover = _reconstitute_dates(value_fragments)
+    dates.extend(recon_dates)
+    value_dates.extend(recon_values)
+    desc_words.extend(leftover)
+    desc_words.extend(value_leftover)
+
     debit = _join_amount(debit_tokens, in_debit_column=True) if debit_tokens else None
     credit = _join_amount(credit_tokens, in_debit_column=False) if credit_tokens else None
     balance = _join_amount(balance_tokens, in_debit_column=None) if balance_tokens else None
@@ -374,6 +401,45 @@ def _assign_line(line: Line, layout: Layout, single_amount_col: bool) -> dict:
         "credit": credit,
         "balance": balance,
     }
+
+
+_DATE_FRAGMENT_RE = re.compile(
+    r"^(?:\d{1,2}|Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec|"
+    r"January|February|March|April|June|July|August|September|October|November|December)$",
+    re.IGNORECASE,
+)
+
+
+def _is_date_fragment(text: str) -> bool:
+    """True when a date-column word could be part of a multi-word date."""
+    return bool(text and _DATE_FRAGMENT_RE.fullmatch(text.strip()))
+
+
+def _reconstitute_dates(fragments: list[str]) -> tuple[list[str], list[str]]:
+    """Join date-column word fragments back into full dates.
+
+    Some statements typeset dates like ``09 May 25`` as three separate words;
+    each fragment alone fails :func:`is_exact_date`. Consecutive fragments are
+    combined until they form a valid date. Fragments that never combine are
+    returned as leftovers (column noise) so they survive as narration text.
+    """
+    out: list[str] = []
+    leftover: list[str] = []
+    i = 0
+    while i < len(fragments):
+        best: Optional[tuple[int, str]] = None
+        for k in range(i, min(i + 5, len(fragments))):
+            candidate = " ".join(fragments[i:k + 1])
+            if is_exact_date(candidate):
+                best = (k, candidate)
+        if best is not None:
+            i, date_tok = best
+            out.append(date_tok)
+            i += 1
+        else:
+            leftover.append(fragments[i])
+            i += 1
+    return out, leftover
 
 
 def _join_amount(tokens: list[str], in_debit_column: Optional[bool]) -> Optional[float]:

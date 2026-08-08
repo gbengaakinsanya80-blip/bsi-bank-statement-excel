@@ -379,7 +379,10 @@ def detect_layout(
     for i, (field, (sx, ex)) in enumerate(ordered):
         # Column edges are anchored to the header label edges (labels are
         # narrower than their columns, so a midpoint rule would clip text).
-        x0 = sx if i == 0 else prev_label_x1
+        # The first column starts at the left page edge so tokens that begin
+        # before the first label (dates typeset at the very left margin) still
+        # fall inside it.
+        x0 = 0.0 if i == 0 else prev_label_x1
         x1 = ordered[i + 1][1][0] if i + 1 < len(ordered) else page_width
         if x0 < prev_x1:
             x0 = prev_x1

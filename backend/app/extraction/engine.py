@@ -126,10 +126,17 @@ class ExtractionEngine:
         self, doc: PdfDocument, start: float, cb: ProgressCallback
     ) -> ParsedStatement:
         cb(45, "Building layout")
-        lines = self._build_lines(doc)
+        raw_lines: list = []
+        for page in doc.pages:
+            if not page.words:
+                continue
+            raw_lines.extend(build_lines(page.words, page.index, start_no=len(raw_lines)))
+        lines = filter_noise_lines(raw_lines)
 
         first = doc.pages[0]
-        header_text = "\n".join(l.text for l in lines[:60])
+        # Bank signatures often live on lines the noise filter drops (websites,
+        # addresses), so detect from the raw line stream instead.
+        header_text = "\n".join(l.text for l in raw_lines[:60])
         template, bank_confidence = detect_bank(header_text)
         layout = detect_layout(lines, first.width, first.height)
 
@@ -462,6 +469,7 @@ def extract_currency(text: str) -> str:
 def extract_period(text: str) -> tuple[Optional[date], Optional[date]]:
     from app.extraction.fields import parse_date
 
+    # Numeric ranges: "Period: 01/01/2025 - 31/12/2025".
     m = re.search(
         r"(?i)(?:period|from)\s*[.:]?\s*(\d{1,2}[/-]\d{1,2}[/-]\d{2,4})\s*"
         r"(?:-|to|till|until|and)\s*(\d{1,2}[/-]\d{1,2}[/-]\d{2,4})",
@@ -469,6 +477,17 @@ def extract_period(text: str) -> tuple[Optional[date], Optional[date]]:
     )
     if m:
         return (parse_date(m.group(1)), parse_date(m.group(2)))
+    # Named-month ranges: "January 1, 2025 through July 18, 2025".
+    m = re.search(
+        r"(?i)((?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\w*)\s+(\d{1,2}),?\s+(\d{2,4})\s*"
+        r"(?:-|to|till|until|and|through)\s*"
+        r"((?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\w*)\s+(\d{1,2}),?\s+(\d{2,4})",
+        text,
+    )
+    if m:
+        start = parse_date(f"{m.group(2)} {m.group(1)} {m.group(3)}")
+        end = parse_date(f"{m.group(5)} {m.group(4)} {m.group(6)}")
+        return (start, end)
     return (None, None)
 
 

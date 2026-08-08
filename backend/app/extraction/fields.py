@@ -47,16 +47,35 @@ DATE_RE = re.compile(
     r"(?<!\d)"
     r"(\d{1,2})[/\-.](\d{1,2})[/\-.](\d{2,4})"
     r"(?!\d)"
+    r"|(?<!\w)(\d{1,2})[-./]\s*(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec|"
+    r"January|February|March|April|June|July|August|September|October|November|December)"
+    r"\.?[-./]\s*(\d{2,4})(?!\w)"
     r"|(?<!\w)(\d{1,2})\s+(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec|"
     r"January|February|March|April|June|July|August|September|October|November|December)"
     r"\.?\s+(\d{2,4})(?!\w)",
     re.IGNORECASE,
 )
 
-_MONTH_MAP = {m.lower(): i for i, m in enumerate(
-    ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec",
-     "january", "february", "march", "april", "june", "july", "august", "september",
-     "october", "november", "december"], start=0)}
+_MONTH_MAP: dict[str, int] = {}
+for _num, _names in enumerate(
+    [
+        ["jan", "january"],
+        ["feb", "february"],
+        ["mar", "march"],
+        ["apr", "april"],
+        ["may"],
+        ["jun", "june"],
+        ["jul", "july"],
+        ["aug", "august"],
+        ["sep", "september"],
+        ["oct", "october"],
+        ["nov", "november"],
+        ["dec", "december"],
+    ],
+    start=1,
+):
+    for _name in _names:
+        _MONTH_MAP[_name] = _num
 
 
 def looks_like_date(text: str) -> bool:
@@ -81,11 +100,17 @@ def parse_date(text: str, day_first: bool = True) -> Optional[date]:
         return None
     raw = raw.replace(",", " ").strip()
 
-    # Named-month form can be handled generically.
+    # Named-month form can be handled generically. Two spelling variants:
+    # day-month-name-year separated by -/. (groups 4-6) or whitespace (7-9).
     m = DATE_RE.search(raw)
     if m and m.group(4):
         try:
-            return date(int(m.group(6)), _month_number(m.group(5)), int(m.group(4)))
+            return date(_normalize_year(int(m.group(6))), _month_number(m.group(5)), int(m.group(4)))
+        except ValueError:
+            return None
+    if m and m.group(7):
+        try:
+            return date(_normalize_year(int(m.group(9))), _month_number(m.group(8)), int(m.group(7)))
         except ValueError:
             return None
     if m and m.group(1):
