@@ -12,6 +12,7 @@ from typing import Any, Callable, Optional
 from app.core.config import MAX_WORKERS
 from app.core.models import ParsedStatement
 from app.export.sqlite_store import Store
+from app.export.store import get_store
 from app.services.pipeline import process_file
 
 ProgressCb = Callable[[str, float, str], None]
@@ -19,7 +20,7 @@ ProgressCb = Callable[[str, float, str], None]
 
 class JobManager:
     def __init__(self, store: Optional[Store] = None) -> None:
-        self._store = store or Store()
+        self._store = store or get_store()
         self._pool = ThreadPoolExecutor(max_workers=MAX_WORKERS)
         self._jobs: dict[str, dict[str, Any]] = {}
         self._lock = threading.Lock()

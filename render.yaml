@@ -2,15 +2,11 @@ services:
   - type: web
     name: bsi-backend
     runtime: python
-    plan: starter
+    plan: free
     rootDir: backend
     buildCommand: (apt-get update -qq && apt-get install -y -qq tesseract-ocr) || (sudo apt-get update -qq && sudo apt-get install -y -qq tesseract-ocr) || echo "tesseract install skipped (using RapidOCR)"; (tesseract --version || echo "tesseract NOT installed") > /tmp/tess_version.txt 2>&1; cat /tmp/tess_version.txt; pip install -r requirements.txt
     startCommand: uvicorn app.main:app --host 0.0.0.0 --port 10000 --workers 1
     healthCheckPath: /api/health
-    disk:
-      name: bsi-data
-      mountPath: /opt/render/project/src/backend/data
-      sizeGB: 1
     envVars:
       - key: PYTHON_VERSION
         value: "3.13.1"
@@ -20,3 +16,5 @@ services:
         value: "1"
       - key: BSI_BALANCE_ERROR_TOLERANCE
         value: "0.10"
+      - key: DATABASE_URL
+        sync: false

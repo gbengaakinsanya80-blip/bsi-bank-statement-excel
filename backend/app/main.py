@@ -9,10 +9,10 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.routes import build_router
 from app.core.config import APP_NAME, VERSION
-from app.export.sqlite_store import Store
+from app.export.store import get_store
 from app.services.jobs import JobManager
 
-_store = Store()
+_store = get_store()
 _jobs = JobManager(store=_store)
 
 
