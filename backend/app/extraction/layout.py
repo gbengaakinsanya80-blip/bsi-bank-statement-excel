@@ -283,6 +283,43 @@ def _span_box(ws: list[Word]) -> Word:
     )
 
 
+def _merge_header_lines(lines: list[Line], best: Line) -> Line:
+    """Merge adjacent header-label lines into one pseudo-line.
+
+    Some OCR engines / printed statements put table labels on slightly
+    different baselines (e.g. BALANCE or DATE one line below the rest of the
+    header). Merging them lets every column anchor be found. Lines containing
+    digits are never merged in (those are data rows).
+    """
+    merged = list(best.words)
+    band_lo = best.top - 36.0
+    band_hi = best.bottom + 36.0
+    for other in lines:
+        if other is best:
+            continue
+        if other.page_index != best.page_index:
+            continue
+        if other.bottom < band_lo or other.top > band_hi:
+            continue
+        if not _match_fields(other):
+            continue
+        if any(any(ch.isdigit() for ch in w.text) for w in other.words):
+            continue
+        merged.extend(other.words)
+    if len(merged) == len(best.words):
+        return best
+    return Line(
+        top=min(w.top for w in merged),
+        bottom=max(w.bottom for w in merged),
+        x0=min(w.x0 for w in merged),
+        x1=max(w.x1 for w in merged),
+        text=" ".join(w.text for w in merged),
+        words=merged,
+        page_index=best.page_index,
+        line_no=best.line_no,
+    )
+
+
 def detect_layout(
     lines: list[Line],
     page_width: float,
@@ -312,6 +349,13 @@ def detect_layout(
 
     if best_line is None or best_score < _HEADER_MIN_SCORE:
         return _infer_layout(lines, page_width, page_height)
+
+    # Some OCR engines / printed statements split header labels across two or
+    # three adjacent baselines (e.g. DATE VALUE DATE DESCRIPTION DEBIT CREDIT
+    # on one line and BALANCE on the next). Merge nearby header-label lines so
+    # every column anchor is found.
+    best_line = _merge_header_lines(lines, best_line)
+    best_fields = _match_fields(best_line)
 
     layout.header_line_no = best_line.line_no
     layout.header_page = best_line.page_index

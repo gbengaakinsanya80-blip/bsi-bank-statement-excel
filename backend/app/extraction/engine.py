@@ -4,6 +4,7 @@ parsing, balance reconciliation, deduplication and summary/validation."""
 from __future__ import annotations
 
 import hashlib
+import json
 import logging
 import re
 import time
@@ -11,12 +12,12 @@ from datetime import date
 from pathlib import Path
 from typing import Callable, Optional
 
-from app.core.config import OCR_DPI
+from app.core.config import DATA_DIR, OCR_DPI
 from app.core.models import ParsedStatement, StatementMeta, Transaction
 from app.extraction.bank_templates import detect_bank
 from app.extraction.categorizer import categorize
 from app.extraction.layout import build_lines, detect_layout, filter_noise_lines
-from app.extraction.ocr import get_available_backend
+from app.extraction.ocr import OCRBackend, get_all_backends
 from app.extraction.pdf_reader import Page, PdfDocument, Word, read_pdf
 from app.extraction.row_parser import parse_rows, to_transactions
 from app.services.stats import compute_summary
@@ -25,6 +26,10 @@ from app.validation.checks import validate_statement
 log = logging.getLogger(__name__)
 
 ProgressCallback = Optional[Callable[[int, str], None]]
+
+#: Max share of rows allowed to break the running-balance chain before the
+#: engine re-runs OCR with the next (slower, more accurate) backend.
+_BALANCE_ERROR_TOLERANCE = 0.05
 
 
 class ExtractionEngine:
@@ -44,9 +49,41 @@ class ExtractionEngine:
         if not doc.pages:
             raise ValueError("The PDF contains no readable pages.")
 
-        if ocr:
-            self._run_ocr(doc, cb)
+        # Fastest-first OCR chain with an automatic accuracy gate: parse with
+        # the preferred engine, verify against the running balance, and if too
+        # many rows break the chain, re-OCR with the next engine. Per-engine
+        # word caches make re-uploads of an already-seen file instant.
+        result: Optional[ParsedStatement] = None
+        backends = [b for b in get_all_backends() if b.available()] if ocr else []
+        for backend in backends:
+            cb(8, f"OCR engine: {backend.name}")
+            ocr_done = self._run_ocr(doc, cb, backend)
+            result = self._parse_document(doc, start, cb)
+            error_rate = self._balance_error_rate(result.transactions)
+            if ocr_done == 0 and result.transactions:
+                # The engine produced no words for any page (skip/exception):
+                # the empty parse must not pass the balance gate.
+                error_rate = 1.0
+            if error_rate <= _BALANCE_ERROR_TOLERANCE:
+                break
+            log.warning(
+                "OCR engine '%s' failed balance validation (%.1f%% bad rows); "
+                "retrying with the next engine.",
+                backend.name,
+                error_rate * 100,
+            )
+            self._reset_ocr_pages(doc)
+        else:
+            if result is None:
+                result = self._parse_document(doc, start, cb)
 
+        cb(95, "Finalising")
+        return result
+
+    # ------------------------------------------------------------------ #
+    def _parse_document(
+        self, doc: PdfDocument, start: float, cb: ProgressCallback
+    ) -> ParsedStatement:
         cb(45, "Building layout")
         lines = self._build_lines(doc)
 
@@ -82,8 +119,7 @@ class ExtractionEngine:
             "header_page": layout.header_page + 1 if layout.header_page >= 0 else None,
         }
 
-        cb(95, "Finalising")
-        result = ParsedStatement(
+        return ParsedStatement(
             meta=meta,
             transactions=transactions,
             validation=report,
@@ -91,27 +127,27 @@ class ExtractionEngine:
             columns_detected=columns_detected,
             raw_pages=[p.text for p in doc.pages[:5]] if layout.column_source == "inferred" else [],
         )
-        cb(100, "Done")
-        return result
 
     # ------------------------------------------------------------------ #
-    def _run_ocr(self, doc: PdfDocument, cb: ProgressCallback) -> None:
+    def _run_ocr(self, doc: PdfDocument, cb: ProgressCallback, backend: OCRBackend) -> int:
         needing = [p for p in doc.pages if p.needs_ocr]
         if not needing:
-            return
-        backend = get_available_backend()
-        if backend is None:
-            log.warning(
-                "%d page(s) look scanned but no OCR backend is installed. "
-                "Install pytesseract+tesseract or paddleocr to read them.",
-                len(needing),
-            )
-            return
+            return 0
+        if not backend.available():
+            log.warning("OCR backend '%s' is not available; skipping.", backend.name)
+            return 0
         scale = 72.0 / OCR_DPI
+        cache_dir = DATA_DIR / "ocr_cache"
+        cache_dir.mkdir(parents=True, exist_ok=True)
+        done = 0
         for i, page in enumerate(needing):
             cb(20 + int(20 * i / len(needing)), f"OCR page {page.index + 1}")
             try:
-                result = backend.recognize_image(page.image_path)
+                words = self._cached_words(cache_dir, page.image_path, backend.name)
+                if words is None:
+                    result = backend.recognize_image(page.image_path)
+                    words = list(result.words)
+                    self._write_word_cache(cache_dir, page.image_path, backend.name, words)
                 page.words = [
                     Word(
                         x0=w.x0 * scale,
@@ -121,12 +157,96 @@ class ExtractionEngine:
                         text=w.text,
                         confidence=w.confidence,
                     )
-                    for w in result.words
+                    for w in words
                 ]
                 page.text = " ".join(w.text for w in page.words)
                 page.needs_ocr = False
+                done += 1
             except Exception as exc:  # pragma: no cover - env dependent
                 log.warning("OCR failed on page %d: %s", page.index + 1, exc)
+        return done
+
+    def _reset_ocr_pages(self, doc: PdfDocument) -> None:
+        """Undo OCR so a different backend can run on the same pages."""
+        for page in doc.pages:
+            if page.image_path:
+                page.words = []
+                page.text = ""
+                page.needs_ocr = True
+
+    @staticmethod
+    def _balance_error_rate(transactions: list[Transaction]) -> float:
+        """Fraction of rows whose amount breaks the running balance chain.
+
+        Uses each row's own balance as the anchor, so a single bad row does
+        not cascade into false positives for every later row.
+        """
+        with_balance = 0
+        errors = 0
+        prev: Optional[float] = None
+        for t in transactions:
+            if t.is_beginning_balance or t.is_ending_balance:
+                continue
+            if t.balance is None:
+                prev = None
+                continue
+            if prev is None:
+                prev = t.balance
+                continue
+            delta = round(t.balance - prev, 2)
+            amount = abs(t.credit or 0.0) + abs(t.debit or 0.0)
+            if abs(abs(delta) - amount) > 0.01 and abs(delta) > 0.01:
+                errors += 1
+            prev = t.balance
+            with_balance += 1
+        if not with_balance:
+            return 0.0
+        return errors / with_balance
+
+    @staticmethod
+    def _word_cache_path(cache_dir: Path, image_path: str, engine: str) -> Path:
+        image_hash = sha256_file(image_path)[:16]
+        return cache_dir / f"words_{image_hash}_{engine}.json"
+
+    def _cached_words(self, cache_dir: Path, image_path: str, engine: str) -> Optional[list[Word]]:
+        """Return previously-OCR'd words for a page image, or None on a miss.
+
+        Coordinates are stored in image pixels, so the cache is only valid for
+        the exact rasterisation (same file content + DPI)."""
+        cache_file = self._word_cache_path(cache_dir, image_path, engine)
+        if not cache_file.exists():
+            return None
+        try:
+            data = json.loads(cache_file.read_text(encoding="utf-8"))
+            return [
+                Word(
+                    x0=w["x0"], top=w["top"], x1=w["x1"], bottom=w["bottom"],
+                    text=w["text"], confidence=w["confidence"],
+                )
+                for w in data.get("words", [])
+            ]
+        except Exception:  # noqa: BLE001 - corrupt cache is a miss
+            return None
+
+    @staticmethod
+    def _write_word_cache(cache_dir: Path, image_path: str, engine: str, words: list[Word]) -> None:
+        cache_file = ExtractionEngine._word_cache_path(cache_dir, image_path, engine)
+        try:
+            payload = {
+                "engine": engine,
+                "dpi": OCR_DPI,
+                "image_hash": sha256_file(image_path)[:16],
+                "words": [
+                    {"x0": w.x0, "top": w.top, "x1": w.x1, "bottom": w.bottom,
+                     "text": w.text, "confidence": w.confidence}
+                    for w in words
+                ],
+            }
+            tmp = cache_file.with_suffix(".tmp")
+            tmp.write_text(json.dumps(payload), encoding="utf-8")
+            tmp.replace(cache_file)
+        except Exception:  # noqa: BLE001 - caching is best-effort
+            pass
 
     def _build_lines(self, doc: PdfDocument):
         lines = []

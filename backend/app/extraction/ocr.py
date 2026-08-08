@@ -114,6 +114,99 @@ class RapidBackend(OCRBackend):
     _instance = None
 
 
+class WindowsBackend(OCRBackend):
+    """Windows.Media.Ocr via PyWinRT — native, near-instant on Windows 10+.
+
+    Reads an image file, runs the OS OCR engine and returns positioned words
+    in image-pixel coordinates (the caller scales them to PDF points).
+    """
+
+    name = "windows"
+
+    def available(self) -> bool:
+        try:
+            import winrt.windows.media.ocr as wocr  # type: ignore
+
+            return bool(list(wocr.OcrEngine.available_recognizer_languages))
+        except Exception:
+            return False
+
+    def recognize_image(self, image_path: str) -> OcrPage:
+        import asyncio
+
+        return asyncio.run(self._recognize(image_path))
+
+    async def _recognize(self, image_path: str) -> OcrPage:
+        import winrt.windows.graphics.imaging as wgi  # type: ignore
+        import winrt.windows.media.ocr as wocr  # type: ignore
+        from winrt.windows.storage import StorageFile  # type: ignore
+
+        engine = self._get_engine()
+        if engine is None:
+            return OcrPage(words=[])
+        file = await StorageFile.get_file_from_path_async(image_path)
+        stream = await file.open_async(1)  # FileAccessMode.Read
+        decoder = await wgi.BitmapDecoder.create_async(stream)
+        bitmap = await decoder.get_software_bitmap_async()
+        try:
+            result = await engine.recognize_async(bitmap)
+        finally:
+            # Release the OS file/stream handles so the raster file is not
+            # locked while later pipeline stages write to the cache.
+            try:
+                stream.close()
+            except Exception:
+                pass
+            try:
+                file.close()
+            except Exception:
+                pass
+
+        words: list[Word] = []
+        for line in result.lines:
+            for w in line.words:
+                text = str(w.text).strip()
+                if not text:
+                    continue
+                r = w.bounding_rect
+                words.append(
+                    Word(
+                        x0=float(r.x),
+                        top=float(r.y),
+                        x1=float(r.x + r.width),
+                        bottom=float(r.y + r.height),
+                        text=text,
+                        confidence=1.0,
+                    )
+                )
+        words.sort(key=lambda w: (w.top, w.x0))
+        return OcrPage(words=words)
+
+    def _get_engine(self):
+        if self._engine is not None:
+            return self._engine
+        import winrt.windows.media.ocr as wocr  # type: ignore
+
+        langs = list(wocr.OcrEngine.available_recognizer_languages)
+        # Prefer English; the first entry may lack an OCR recognizer.
+        langs.sort(key=lambda l: (l.language_tag[:2] != "en", l.language_tag))
+        for lang in langs:
+            try:
+                eng = wocr.OcrEngine.try_create_from_language(lang)
+            except OSError:
+                eng = None
+            if eng is not None:
+                self._engine = eng
+                return eng
+        try:
+            self._engine = wocr.OcrEngine.try_create_from_user_profile_languages()
+        except OSError:
+            self._engine = None
+        return self._engine
+
+    _engine = None
+
+
 class PaddleBackend(OCRBackend):
     name = "paddleocr"
 
@@ -155,12 +248,17 @@ class PaddleBackend(OCRBackend):
 _BACKENDS: list[OCRBackend] = []
 
 
-def get_available_backend() -> Optional[OCRBackend]:
-    """Return the first working OCR backend, or None."""
+def get_all_backends() -> list[OCRBackend]:
+    """Return the OCR backends in preference order (fastest first)."""
     global _BACKENDS
     if not _BACKENDS:
-        _BACKENDS = [PaddleBackend(), RapidBackend(), TesseractBackend()]
-    for backend in _BACKENDS:
+        _BACKENDS = [WindowsBackend(), PaddleBackend(), RapidBackend(), TesseractBackend()]
+    return _BACKENDS
+
+
+def get_available_backend() -> Optional[OCRBackend]:
+    """Return the first working OCR backend, or None."""
+    for backend in get_all_backends():
         try:
             if backend.available():
                 return backend
