@@ -1,8 +1,10 @@
 """Pluggable OCR backends.
 
 The engine never depends on a specific OCR stack. Backends are probed lazily
-in preference order (PaddleOCR -> RapidOCR -> Tesseract) and the first usable
-one wins. If none is available, the engine degrades to the PDF text layer only.
+in preference order: fast, always-available engines first (Windows native OCR,
+then Tesseract), followed by slower high-accuracy engines (PaddleOCR,
+RapidOCR). The engine re-runs with the next backend when the balance-validation
+gate rejects a fast engine's output.
 """
 
 from __future__ import annotations
@@ -252,7 +254,12 @@ def get_all_backends() -> list[OCRBackend]:
     """Return the OCR backends in preference order (fastest first)."""
     global _BACKENDS
     if not _BACKENDS:
-        _BACKENDS = [WindowsBackend(), PaddleBackend(), RapidBackend(), TesseractBackend()]
+        _BACKENDS = [
+            WindowsBackend(),
+            TesseractBackend(),
+            PaddleBackend(),
+            RapidBackend(),
+        ]
     return _BACKENDS
 
 
