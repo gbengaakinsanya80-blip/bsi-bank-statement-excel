@@ -1,11 +1,12 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { AlertCircle, FileSpreadsheet, Layers, Pencil, Wand2 } from "lucide-react";
 import { Landing } from "@/components/Landing";
 import { AccountHeadsPanel } from "@/components/AccountHeadsPanel";
-import { applyEdits, getJob, getResult, triggerExport, uploadPdf, uploadPdfs, type TransactionEdit } from "@/lib/api";
+import { applyEdits, ApiError, getJob, getResult, triggerExport, uploadPdf, uploadPdfs, type TransactionEdit } from "@/lib/api";
 import type { ExportFormat, ParseResult, Transaction } from "@/lib/types";
 import { UploadDropzone } from "@/components/UploadDropzone";
 import { ProgressBar, StepIndicator } from "@/components/ProgressBar";
@@ -75,6 +76,7 @@ function HomeContent() {
   const [editing, setEditing] = React.useState(false);
   const [batch, setBatch] = React.useState<{ id: string; name: string }[] | null>(null);
   const [batchIndex, setBatchIndex] = React.useState(0);
+  const [quotaError, setQuotaError] = React.useState(false);
 
   const pollJob = React.useCallback(async (id: string): Promise<ParseResult> => {
     setPhase("processing");
@@ -139,6 +141,7 @@ function HomeContent() {
     setFile(files[0]);
     setBatch(null);
     setEditing(false);
+    setQuotaError(false);
     setParsed(null);
     setError(null);
     setPhase("processing");
@@ -148,6 +151,7 @@ function HomeContent() {
     try {
       ids = files.length === 1 ? [await uploadPdf(files[0])] : await uploadPdfs(files);
     } catch (e) {
+      setQuotaError(e instanceof ApiError && e.status === 402);
       setError(e instanceof Error ? e.message : "Upload failed.");
       setPhase("error");
       return;
@@ -272,8 +276,13 @@ function HomeContent() {
             <CardContent className="flex items-start gap-3 p-5">
               <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-destructive" />
               <div className="space-y-1">
-                <p className="text-sm font-semibold">Processing failed</p>
+                <p className="text-sm font-semibold">{quotaError ? "Monthly limit reached" : "Processing failed"}</p>
                 <p className="text-sm text-muted-foreground">{error}</p>
+                {quotaError && (
+                  <Button asChild size="sm" className="mt-2">
+                    <Link href="/pricing">Upgrade to Pro</Link>
+                  </Button>
+                )}
               </div>
             </CardContent>
           </Card>

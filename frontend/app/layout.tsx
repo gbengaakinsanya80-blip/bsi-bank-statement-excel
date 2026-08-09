@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { ThemeProvider } from "@/components/ThemeProvider";
+import { AuthProvider } from "@/components/AuthProvider";
 import { SiteHeader } from "@/components/SiteHeader";
 
 export const metadata: Metadata = {
@@ -14,8 +15,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en" suppressHydrationWarning>
       <body className="min-h-screen bg-background font-sans text-foreground antialiased">
         <ThemeProvider>
-          <SiteHeader />
-          {children}
+          <AuthProvider>
+            <SiteHeader />
+            {children}
+          </AuthProvider>
           <footer className="container border-t py-6 text-center text-xs text-muted-foreground">
             Bank Statement Intelligence — AI Bank Statement → Excel Converter
           </footer>

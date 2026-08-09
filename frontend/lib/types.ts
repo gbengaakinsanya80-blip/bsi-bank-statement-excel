@@ -244,3 +244,30 @@ export interface SearchResponse {
   filters: SearchFilterParams;
   rows: SearchRow[];
 }
+
+export interface Plan {
+  code: string;
+  name: string;
+  price_ngn: number;
+  monthly_statements: number | null;
+  interval: string;
+  paystack_plan: string;
+}
+
+export interface PlansResponse {
+  plans: Plan[];
+  paystack_public_key: string | null;
+}
+
+export interface BillingStatus {
+  plan: string;
+  plan_name: string;
+  price_ngn: number;
+  monthly_limit: number | null;
+  unlimited: boolean;
+  statements_used: number;
+  usage_month: string | null;
+  expires_at: string | null;
+  active: boolean;
+  customer_code: string | null;
+}

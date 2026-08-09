@@ -3,10 +3,12 @@
 import * as React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Activity, AlertCircle, Landmark, LayoutDashboard, History, Search } from "lucide-react";
+import { Activity, AlertCircle, CreditCard, Landmark, LayoutDashboard, History, LogOut, Search, Sparkles } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import { healthCheck } from "@/lib/api";
+import { useAuth } from "@/components/AuthProvider";
+import { getBillingStatus, healthCheck } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
 const NAV = [
@@ -18,13 +20,31 @@ const NAV = [
 
 export function SiteHeader() {
   const pathname = usePathname();
+  const { user, initializing, logout } = useAuth();
   const [apiOnline, setApiOnline] = React.useState<boolean | null>(null);
+  const [plan, setPlan] = React.useState<string | null>(null);
 
   React.useEffect(() => {
     healthCheck().then(setApiOnline);
     const t = setInterval(() => healthCheck().then(setApiOnline), 15000);
     return () => clearInterval(t);
   }, []);
+
+  React.useEffect(() => {
+    if (!user) {
+      setPlan(null);
+      return;
+    }
+    let cancelled = false;
+    getBillingStatus()
+      .then((s) => {
+        if (!cancelled) setPlan(s.plan);
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [user]);
 
   return (
     <header className="sticky top-0 z-40 border-b bg-background/90 backdrop-blur">
@@ -68,6 +88,37 @@ export function SiteHeader() {
             <Badge variant="destructive" className="hidden gap-1 sm:inline-flex">
               <AlertCircle className="h-3 w-3" /> API offline
             </Badge>
+          )}
+          {!initializing && user && (
+            <>
+              {plan === "free" ? (
+                <Button size="sm" variant="outline" asChild>
+                  <Link href="/pricing">
+                    <Sparkles className="h-4 w-4" /> Upgrade
+                  </Link>
+                </Button>
+              ) : (
+                <Button size="sm" variant="ghost" asChild>
+                  <Link href="/account">
+                    <Badge variant="success">{plan ?? "Account"}</Badge>
+                  </Link>
+                </Button>
+              )}
+              <Button size="sm" variant="ghost" asChild>
+                <Link href="/account">
+                  <CreditCard className="h-4 w-4" />
+                  <span className="hidden sm:inline">Billing</span>
+                </Link>
+              </Button>
+              <Button size="sm" variant="ghost" onClick={logout}>
+                <LogOut className="h-4 w-4" /> Sign out
+              </Button>
+            </>
+          )}
+          {!initializing && !user && (
+            <Button size="sm" variant="default" asChild>
+              <Link href="/login">Sign in</Link>
+            </Button>
           )}
           <ThemeToggle />
         </div>

@@ -6,9 +6,11 @@ import shutil
 from pathlib import Path
 from typing import Optional
 
-from fastapi import APIRouter, Body, File, HTTPException, Query, UploadFile
+from fastapi import APIRouter, Body, Depends, File, HTTPException, Query, UploadFile
 from fastapi.responses import Response
 
+from app.auth.deps import get_current_user
+from app.billing.service import quota_exceeded
 from app.core.config import UPLOAD_DIR
 from app.export.sqlite_store import Store
 from app.services.jobs import JobManager
@@ -53,14 +55,23 @@ def build_router(jobs: JobManager, store: Store) -> APIRouter:
         return {"banks": get_supported_banks()}
 
     @router.post("/process")
-    def process(upload: UploadFile = File(...)) -> dict:
+    def process(
+        upload: UploadFile = File(...),
+        user: dict = Depends(get_current_user),
+    ) -> dict:
         if not upload.filename:
             raise HTTPException(400, "A file is required.")
         ext = Path(upload.filename).suffix.lower()
         if ext not in ALLOWED_EXTS:
             raise HTTPException(400, "Only PDF files are supported.")
+        if quota_exceeded(store, user["id"]):
+            raise HTTPException(
+                402,
+                "You've reached your monthly statement limit on the Free plan. "
+                "Upgrade to Pro to keep processing.",
+            )
 
-        job = jobs.create(upload.filename)
+        job = jobs.create(upload.filename, user_id=user["id"])
         dest = UPLOAD_DIR / f"{job['job_id']}{ext}"
         with dest.open("wb") as fh:
             shutil.copyfileobj(upload.file, fh)
@@ -68,43 +79,55 @@ def build_router(jobs: JobManager, store: Store) -> APIRouter:
         return {"job_id": job["job_id"]}
 
     @router.get("/jobs")
-    def list_jobs(limit: int = Query(50, ge=1, le=200)) -> dict:
-        return {"jobs": jobs.list_jobs(limit=limit)}
+    def list_jobs(
+        limit: int = Query(50, ge=1, le=200),
+        user: dict = Depends(get_current_user),
+    ) -> dict:
+        return {"jobs": jobs.list_jobs(limit=limit, user_id=user["id"])}
 
     @router.get("/jobs/{job_id}")
-    def get_job(job_id: str) -> dict:
-        job = jobs.get(job_id)
+    def get_job(job_id: str, user: dict = Depends(get_current_user)) -> dict:
+        job = jobs.get(job_id, user_id=user["id"])
         if job is None:
             raise HTTPException(404, "Job not found.")
         return job
 
     @router.delete("/jobs/{job_id}")
-    def delete_job(job_id: str) -> dict:
-        jobs.delete(job_id)
+    def delete_job(job_id: str, user: dict = Depends(get_current_user)) -> dict:
+        if not jobs.delete(job_id, user_id=user["id"]):
+            raise HTTPException(404, "Job not found.")
         return {"deleted": job_id}
 
     @router.get("/jobs/{job_id}/result")
-    def job_result(job_id: str) -> dict:
-        result = jobs.get_result(job_id)
+    def job_result(job_id: str, user: dict = Depends(get_current_user)) -> dict:
+        result = jobs.get_result(job_id, user_id=user["id"])
         if result is None:
             raise HTTPException(404, "Result not found.")
         return result
 
     @router.post("/jobs/{job_id}/edits")
-    def apply_edits(job_id: str, payload: dict = Body(...)) -> dict:
+    def apply_edits(
+        job_id: str,
+        payload: dict = Body(...),
+        user: dict = Depends(get_current_user),
+    ) -> dict:
         edits = payload.get("edits", []) if isinstance(payload, dict) else []
         if not isinstance(edits, list):
             raise HTTPException(400, "edits must be a list.")
-        result = jobs.apply_edits(job_id, edits)
+        result = jobs.apply_edits(job_id, edits, user_id=user["id"])
         if result is None:
             raise HTTPException(404, "Result not found.")
         return result
 
     @router.get("/jobs/{job_id}/export")
-    def export(job_id: str, format: str = Query("xlsx")) -> Response:
+    def export(
+        job_id: str,
+        format: str = Query("xlsx"),
+        user: dict = Depends(get_current_user),
+    ) -> Response:
         if format not in EXPORT_FORMATS:
             raise HTTPException(400, f"format must be one of {sorted(EXPORT_FORMATS)}")
-        result = jobs.get_result(job_id)
+        result = jobs.get_result(job_id, user_id=user["id"])
         if result is None:
             raise HTTPException(404, "Result not found.")
         try:
@@ -132,6 +155,7 @@ def build_router(jobs: JobManager, store: Store) -> APIRouter:
         category: str = "",
         job_id: str = "",
         limit: int = Query(SEARCH_DEFAULT_LIMIT, ge=1, le=5000),
+        user: dict = Depends(get_current_user),
     ) -> dict:
         return run_search(
             store,
@@ -144,6 +168,7 @@ def build_router(jobs: JobManager, store: Store) -> APIRouter:
             tx_type=tx_type,
             category=category,
             job_id=job_id,
+            user_id=user["id"],
             limit=limit,
         )
 

@@ -20,6 +20,7 @@ def search(
     tx_type: str = "",
     category: str = "",
     job_id: str = "",
+    user_id: Optional[str] = None,
     limit: int = SEARCH_LIMIT,
 ) -> dict[str, Any]:
     rows = store.search_transactions(
@@ -32,6 +33,7 @@ def search(
         tx_type=tx_type,
         category=category,
         job_id=job_id,
+        user_id=user_id,
         limit=limit,
     )
     total_credits = sum(r.get("credit") or 0.0 for r in rows)

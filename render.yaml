@@ -18,3 +18,15 @@ services:
         value: "0.10"
       - key: DATABASE_URL
         sync: false
+      - key: BSI_JWT_SECRET
+        sync: false
+      - key: PAYSTACK_SECRET_KEY
+        sync: false
+      - key: PAYSTACK_PUBLIC_KEY
+        sync: false
+      - key: PAYSTACK_WEBHOOK_SECRET
+        sync: false
+      - key: PAYSTACK_PLAN_PRO
+        sync: false
+      - key: PAYSTACK_PLAN_BUSINESS
+        sync: false

@@ -26,10 +26,11 @@ class JobManager:
         self._lock = threading.Lock()
 
     # ------------------------------------------------------------------ #
-    def create(self, filename: str) -> dict[str, Any]:
+    def create(self, filename: str, user_id: Optional[str] = None) -> dict[str, Any]:
         job_id = uuid.uuid4().hex
         job = {
             "job_id": job_id,
+            "user_id": user_id,
             "filename": filename,
             "status": "queued",
             "progress": 0.0,
@@ -48,6 +49,7 @@ class JobManager:
 
     def _run(self, job_id: str, file_path: str) -> None:
         job = self._jobs[job_id]
+        user_id = job.get("user_id")
         try:
             self._update(job_id, status="running", progress=2.0, message="Reading PDF")
 
@@ -55,7 +57,9 @@ class JobManager:
                 self._update(job_id, progress=percent, message=message)
 
             parsed = process_file(file_path, job_id, progress)
-            self._store.save_job(job_id, job["filename"], "completed", parsed)
+            self._store.save_job(job_id, job["filename"], "completed", parsed, user_id=user_id)
+            if user_id:
+                self._store.record_usage(user_id)
             self._update(job_id, status="completed", progress=100.0, message="Completed", result=parsed)
         except Exception as exc:  # noqa: BLE001
             self._store.update_status(job_id, "failed", str(exc))
@@ -87,13 +91,15 @@ class JobManager:
                 job["finished_at"] = _now()
 
     # ------------------------------------------------------------------ #
-    def get(self, job_id: str) -> Optional[dict[str, Any]]:
+    def get(self, job_id: str, user_id: Optional[str] = None) -> Optional[dict[str, Any]]:
         with self._lock:
             job = self._jobs.get(job_id)
             if job is not None:
+                if user_id and job.get("user_id") != user_id:
+                    return None
                 return _job_summary(job)
         # Fall back to SQLite (e.g. after a restart).
-        row = self._store.get_job(job_id)
+        row = self._store.get_job(job_id, user_id=user_id)
         if row is None:
             return None
         return {
@@ -108,22 +114,27 @@ class JobManager:
             "result": None,
         }
 
-    def get_result(self, job_id: str) -> Optional[dict[str, Any]]:
+    def get_result(self, job_id: str, user_id: Optional[str] = None) -> Optional[dict[str, Any]]:
         with self._lock:
             job = self._jobs.get(job_id)
-            if job is not None and job.get("result") is not None:
-                return job["result"].to_dict()
-        row = self._store.get_job(job_id)
+            if job is not None:
+                if user_id and job.get("user_id") != user_id:
+                    return None
+                if job.get("result") is not None:
+                    return job["result"].to_dict()
+        row = self._store.get_job(job_id, user_id=user_id)
         if row is None or not row.get("result_json"):
             return None
         import json
 
         return json.loads(row["result_json"])
 
-    def apply_edits(self, job_id: str, edits: list[dict[str, Any]]) -> Optional[dict[str, Any]]:
+    def apply_edits(
+        self, job_id: str, edits: list[dict[str, Any]], user_id: Optional[str] = None
+    ) -> Optional[dict[str, Any]]:
         """Patch transactions of a completed job, then recompute summary,
         validation and insights and persist the corrected result."""
-        result = self.get_result(job_id)
+        result = self.get_result(job_id, user_id=user_id)
         if result is None:
             return None
 
@@ -198,19 +209,20 @@ class JobManager:
         _attach_insights(parsed)
 
         filename = parsed.meta.file_name or result.get("filename") or "statement"
-        self._store.save_job(job_id, filename, "completed", parsed)
+        self._store.save_job(job_id, filename, "completed", parsed, user_id=user_id)
         with self._lock:
             job = self._jobs.get(job_id)
             if job is not None:
                 job["result"] = parsed
         return parsed.to_dict()
 
-    def list_jobs(self, limit: int = 50) -> list[dict[str, Any]]:
+    def list_jobs(self, limit: int = 50, user_id: Optional[str] = None) -> list[dict[str, Any]]:
         with self._lock:
-            live = [_job_summary(j) for j in list(self._jobs.values())[-limit:]]
+            live = [_job_summary(j) for j in list(self._jobs.values())[-limit:]
+                    if (not user_id or j.get("user_id") == user_id)]
         live_ids = {j["job_id"] for j in live}
         persisted = []
-        for j in self._store.list_jobs(limit=limit):
+        for j in self._store.list_jobs(limit=limit, user_id=user_id):
             if j["id"] in live_ids:
                 continue
             persisted.append(
@@ -232,10 +244,15 @@ class JobManager:
         merged.sort(key=lambda j: j.get("created_at") or "", reverse=True)
         return merged[:limit]
 
-    def delete(self, job_id: str) -> bool:
+    def delete(self, job_id: str, user_id: Optional[str] = None) -> bool:
         with self._lock:
+            job = self._jobs.get(job_id)
+            if job is not None and user_id and job.get("user_id") != user_id:
+                return False
             self._jobs.pop(job_id, None)
-        self._store.delete_job(job_id)
+        if user_id and self._store.get_job(job_id, user_id=user_id) is None:
+            return False
+        self._store.delete_job(job_id, user_id=user_id)
         return True
 
 

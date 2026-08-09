@@ -160,6 +160,39 @@ the **absolute, publicly reachable** backend URL. See `frontend/.env.example`.
 | `GET`  | `/api/jobs/{id}/export`  | `?format=xlsx\|csv\|json\|pdf\|sqlite` |
 | `DELETE` | `/api/jobs/{id}`       | Delete a job                             |
 | `GET`  | `/api/search`            | `?q=&min_amount=&max_amount=&balance=&tx_type=&from_date=&…` |
+| `GET`  | `/api/billing/plans`     | Plans + Paystack public key             |
+| `GET`  | `/api/billing/me`        | Current plan, monthly usage & expiry    |
+| `POST` | `/api/billing/subscribe` | `{plan, reference}` — verify a Paystack checkout |
+| `POST` | `/api/billing/cancel`    | Cancel the active subscription          |
+| `POST` | `/api/billing/webhook`   | Paystack webhook (HMAC-verified)        |
+
+## Subscriptions & billing
+
+The app monetises with **Paystack** recurring plans and a **Free / Pro / Business** tier model.
+Every authenticated user gets an independent, metered monthly allowance.
+
+- **Free**: `BSI_FREE_MONTHLY_LIMIT` statements/month (default `3`). Uploads past the limit
+  return `402` and the dashboard shows an *Upgrade to Pro* prompt.
+- **Pro** (default ₦2,500/mo) and **Business** (default ₦5,000/mo): unlimited statements.
+- Usage resets each calendar month; switching plans resets the counter too.
+
+### Enabling payments
+
+1. Create a [Paystack](https://paystack.com) account and copy `Secret Key`, `Public Key` and
+   the **Webhook secret** (Dashboard → Settings → API Keys & Webhooks).
+2. In Paystack, create two **recurring monthly** plans (e.g. "BSI Pro" ₦2,500 and
+   "BSI Business" ₦5,000) and note their plan codes (`PLN_…`).
+3. Set the backend env vars (see `backend/.env.example`):
+   `PAYSTACK_SECRET_KEY`, `PAYSTACK_PUBLIC_KEY`, `PAYSTACK_WEBHOOK_SECRET`,
+   `PAYSTACK_PLAN_PRO`, `PAYSTACK_PLAN_BUSINESS`.
+4. Add a webhook endpoint in Paystack → Settings → Webhooks pointing to
+   `https://<backend>/api/billing/webhook`, events: `invoice.paid`, `subscription.create`,
+   `subscription.disable`, `subscription.expire`, `subscription.not_renew`, `charge.failed`.
+5. Users click **Upgrade** on `/pricing`, pay in the Paystack popup, and the verified
+   transaction activates their plan immediately.
+
+Until `PAYSTACK_SECRET_KEY` is set, the Free tier is enforced and `/api/billing/subscribe`
+returns `503`.
 
 ## Accuracy model
 
