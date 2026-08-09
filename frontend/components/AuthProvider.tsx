@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 
 import { clearSession, getToken, setSession, type AuthUser } from "@/lib/auth";
 import { fetchMe, login as apiLogin, register as apiRegister } from "@/lib/api";
@@ -18,6 +18,7 @@ const AuthContext = React.createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
+  const pathname = usePathname();
   const [user, setUser] = React.useState<AuthUser | null>(null);
   const [initializing, setInitializing] = React.useState(true);
 
@@ -35,6 +36,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       })
       .finally(() => setInitializing(false));
   }, []);
+
+  React.useEffect(() => {
+    if (initializing) return;
+    if (user) return;
+    if (pathname === "/login") return;
+    // App is behind the login wall: send unauthenticated visitors to sign in.
+    const next = pathname + window.location.search;
+    router.replace(`/login?next=${encodeURIComponent(next)}`);
+  }, [initializing, user, pathname, router]);
 
   const login = React.useCallback(
     async (email: string, password: string, next?: string) => {
