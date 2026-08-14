@@ -127,24 +127,34 @@ def parse_rows(
         is_opening = label_is_opening(text)
         is_closing = label_is_closing(text)
 
-        # A record is complete once it holds its running balance: every later
-        # line starts a new record (handles multi-line descriptions where the
-        # date appears on the middle/last fragment, not the first).
-        if cur is not None and cur.balance is not None:
-            records.append(cur)
-            cur = None
-        elif cur is not None and has_date and cur.date_tokens:
-            # No-balance-column fallback: a fresh date while one is already
-            # present means the previous row has ended.
-            records.append(cur)
-            cur = None
-
-        if cur is None:
+        # A balance label always starts a fresh record. Some layouts print a
+        # description-only fragment directly above the closing balance (e.g.
+        # the last transaction's reference line), and that fragment must not be
+        # absorbed into the closing record.
+        if is_opening or is_closing:
+            if cur is not None:
+                records.append(cur)
+                cur = None
             cur = _RawRecord(page=line.page_index + 1, line_no=line.line_no)
             if is_opening:
                 cur.is_opening = True
             if is_closing:
                 cur.is_closing = True
+        else:
+            # A record is complete once it holds its running balance: every later
+            # line starts a new record (handles multi-line descriptions where the
+            # date appears on the middle/last fragment, not the first).
+            if cur is not None and cur.balance is not None:
+                records.append(cur)
+                cur = None
+            elif cur is not None and has_date and cur.date_tokens:
+                # No-balance-column fallback: a fresh date while one is already
+                # present means the previous row has ended.
+                records.append(cur)
+                cur = None
+
+            if cur is None:
+                cur = _RawRecord(page=line.page_index + 1, line_no=line.line_no)
 
         if assigned["dates"] and not cur.date_tokens:
             cur.date_tokens = list(assigned["dates"])

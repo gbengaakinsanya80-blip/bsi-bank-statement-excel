@@ -3,7 +3,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Activity, AlertCircle, CreditCard, Landmark, LayoutDashboard, History, LogOut, Search, Sparkles } from "lucide-react";
+import { Activity, AlertCircle, BarChart3, Building2, CreditCard, Landmark, LayoutDashboard, History, Link2, LogOut, ScrollText, Search, Sparkles } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/ThemeToggle";
@@ -15,6 +15,10 @@ const NAV = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
   { href: "/history", label: "History", icon: History },
   { href: "/search", label: "Search", icon: Search },
+  { href: "/statements", label: "Statements", icon: Link2 },
+  { href: "/reports", label: "Reports", icon: BarChart3 },
+  { href: "/ledger", label: "Ledger", icon: ScrollText },
+  { href: "/accounting", label: "Setup", icon: Building2 },
   { href: "/templates", label: "Banks", icon: Landmark },
 ];
 

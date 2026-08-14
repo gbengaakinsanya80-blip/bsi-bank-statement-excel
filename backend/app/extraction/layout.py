@@ -308,6 +308,11 @@ def _merge_header_lines(lines: list[Line], best: Line) -> Line:
         merged.extend(other.words)
     if len(merged) == len(best.words):
         return best
+    # Merge order is document order, which can differ from physical layout
+    # (stacked header labels on adjacent baselines). Re-sort by x so the first
+    # keyword match is the leftmost label (e.g. a two-line "TRANSACTION / DATE"
+    # header where the real date column sits left of "VALUE DATE").
+    merged.sort(key=lambda w: w.x0)
     return Line(
         top=min(w.top for w in merged),
         bottom=max(w.bottom for w in merged),

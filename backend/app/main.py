@@ -7,6 +7,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.api.accounting_routes import build_accounting_router
 from app.api.routes import build_router
 from app.auth.routes import build_auth_router
 from app.billing.routes import build_billing_router
@@ -39,3 +40,4 @@ app.state.store = _store
 app.include_router(build_auth_router(_store), prefix="/api")
 app.include_router(build_billing_router(_store), prefix="/api")
 app.include_router(build_router(_jobs, _store), prefix="/api")
+app.include_router(build_accounting_router(_jobs, _store), prefix="/api")

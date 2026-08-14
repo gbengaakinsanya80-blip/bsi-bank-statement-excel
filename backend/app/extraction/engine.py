@@ -153,6 +153,7 @@ class ExtractionEngine:
 
         cb(72, "Reconciling balances")
         transactions = reconcile_transactions(transactions)
+        transactions = drop_page_boundary_garbage(transactions)
         transactions = dedupe_transactions(transactions)
 
         meta = self._build_meta(doc, template.name, bank_confidence, start)
@@ -413,14 +414,90 @@ def reconcile_transactions(transactions: list[Transaction]) -> list[Transaction]
     return transactions
 
 
+def _is_unreadable_description(text: str) -> bool:
+    """Heuristic for a description whose words are fragmented/meaningless.
+
+    Real statement lines carry at least one token of 4+ characters (account
+    names, bank codes, narrative words). A line made only of 1-3 character
+    fragments is the signature of a corrupted PDF text layer.
+    """
+    tokens = [t for t in text.split() if any(c.isalnum() for c in t)]
+    if len(tokens) < 2:
+        return False
+    return max(sum(1 for c in t if c.isalnum()) for t in tokens) < 4
+
+
+def drop_page_boundary_garbage(transactions: list[Transaction]) -> list[Transaction]:
+    """Drop a corrupted page-boundary repeat row.
+
+    Some layouts reprint the last table row at the top of the next page. When
+    that reprint's text layer is corrupted (fragmented glyphs, broken amounts),
+    its own parsed amount can still look self-consistent against its broken
+    balance, fooling reconciliation. Such a row is dropped only when it is the
+    first row of a new page, its description is unreadable, and removing it
+    keeps the running-balance chain intact (the following row's balance is
+    reachable from the previous page's closing balance via that row's amount
+    magnitude). The following row's debit/credit direction is repaired against
+    the reconnected chain, since reconciliation may have seen it from the
+    corrupted intermediate balance.
+    """
+    out: list[Transaction] = []
+    for i, t in enumerate(transactions):
+        if t.is_beginning_balance or t.is_ending_balance:
+            out.append(t)
+            continue
+        prev_kept = out[-1] if out else None
+        if (
+            prev_kept is None
+            or prev_kept.balance is None
+            or t.page_number <= prev_kept.page_number
+            or not _is_unreadable_description(t.description or "")
+        ):
+            out.append(t)
+            continue
+        nxt = None
+        for j in range(i + 1, len(transactions)):
+            if transactions[j].is_beginning_balance or transactions[j].is_ending_balance:
+                continue
+            nxt = transactions[j]
+            break
+        if nxt is None or nxt.balance is None:
+            out.append(t)
+            continue
+        delta = nxt.balance - prev_kept.balance
+        amount = (nxt.debit or 0.0) if (nxt.debit or 0.0) > 0 else (nxt.credit or 0.0)
+        if abs(abs(delta) - amount) >= 0.01:
+            out.append(t)
+            continue
+        # The row is a no-op on the balance chain: drop the corrupt repeat and
+        # repair the following row's direction against the reconnected chain.
+        if abs(delta) >= 0.005:
+            if delta < 0:
+                nxt.debit = abs(delta)
+                nxt.credit = None
+            else:
+                nxt.credit = abs(delta)
+                nxt.debit = None
+        continue
+    return out
+
+
 def dedupe_transactions(transactions: list[Transaction]) -> list[Transaction]:
-    """Remove exact duplicate records (same fingerprint), keeping the first.
+    """Remove repeated page-boundary rows without touching legitimate repeats.
 
     Repeated per-page opening/closing balance rows (same flag + balance) are
-    also collapsed to a single row.
+    collapsed to a single row. A transaction that leaves the running balance
+    unchanged (its balance equals the previous kept row's) is dropped: layouts
+    reprint the last table row at the top of the following page, and the
+    reprint carries the same balance. Genuine transactions whose balance merely
+    returns to an earlier value are kept -- only balance equality with the
+    immediately preceding row triggers a drop, and a reprint's description is
+    usually unreadable (it was a copy with corrupt glyphs) while a legit
+    zero-net row carries real narrative.
     """
     seen: set[str] = set()
     out: list[Transaction] = []
+    prev_balance: Optional[float] = None
     for t in transactions:
         if t.is_beginning_balance or t.is_ending_balance:
             key = (
@@ -432,11 +509,17 @@ def dedupe_transactions(transactions: list[Transaction]) -> list[Transaction]:
             seen.add(key)
             out.append(t)
             continue
-        fp = t.fingerprint()
-        if fp in seen:
+        if (
+            prev_balance is not None
+            and t.balance is not None
+            and abs(t.balance - prev_balance) < 0.005
+            and (t.fingerprint() in seen or _is_unreadable_description(t.description or ""))
+        ):
             continue
-        seen.add(fp)
+        seen.add(t.fingerprint())
         out.append(t)
+        if t.balance is not None:
+            prev_balance = t.balance
     return out
 
 

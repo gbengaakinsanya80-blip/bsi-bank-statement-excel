@@ -271,3 +271,197 @@ export interface BillingStatus {
   active: boolean;
   customer_code: string | null;
 }
+
+// ------------------------------------------------------------------ //
+// Accounting (companies, periods, financial statements)
+// ------------------------------------------------------------------ //
+export interface Company {
+  id: string;
+  name: string;
+  trading_name: string | null;
+  reg_number: string | null;
+  country: string;
+  currency: string;
+  industry: string;
+  accounting_basis: string;
+  financial_year_end: string | null;
+  opening_date: string | null;
+  created_at: string | null;
+}
+
+export interface AccountingPeriod {
+  id: string;
+  name: string;
+  start_date: string;
+  end_date: string;
+  status: string;
+  created_at: string | null;
+}
+
+export interface ChartAccount {
+  id: string;
+  company_id: string;
+  code: string;
+  name: string;
+  account_type: string;
+  normal_balance: string;
+  parent_code: string | null;
+  is_system: boolean;
+}
+
+export interface BankAccount {
+  id: string;
+  company_id: string;
+  name: string;
+  bank_name: string;
+  account_number: string;
+  currency: string;
+  created_at: string | null;
+}
+
+export interface RawJob {
+  id: string;
+  filename: string | null;
+  status: string;
+  created_at: string | null;
+  finished_at: string | null;
+  error: string | null;
+  meta_json: string | null;
+}
+
+export interface CompanyStatement {
+  id: string;
+  company_id: string;
+  job_id: string;
+  bank_account_id: string | null;
+  period_id: string | null;
+  linked_at: string | null;
+  job_meta?: {
+    filename?: string | null;
+    status?: string | null;
+    bank_name?: string | null;
+    account_name?: string | null;
+    account_number?: string | null;
+    period_start?: string | null;
+    period_end?: string | null;
+  } | null;
+  bank_account?: BankAccount | null;
+  period?: AccountingPeriod | null;
+}
+
+export interface LedgerTxn {
+  id: string;
+  company_id: string;
+  statement_id: string | null;
+  row_index: number | null;
+  tx_date: string | null;
+  description: string | null;
+  reference: string | null;
+  debit: number | null;
+  credit: number | null;
+  balance: number | null;
+  category: string | null;
+  account_code: string | null;
+  transaction_type: string | null;
+  confidence: number | null;
+  rationale: string | null;
+  status: string;
+}
+
+export interface ReportAccountLine {
+  code: string;
+  name: string;
+  account_type: string;
+  balance: number;
+  change?: number;
+}
+
+export interface IncomeStatementReport {
+  period_id: string | null;
+  revenue: ReportAccountLine[];
+  total_revenue: number;
+  expenses: ReportAccountLine[];
+  total_expenses: number;
+  net_profit: number;
+}
+
+export interface BalanceSheetReport {
+  period_id: string | null;
+  assets: ReportAccountLine[];
+  total_assets: number;
+  liabilities: ReportAccountLine[];
+  total_liabilities: number;
+  equity: ReportAccountLine[];
+  current_year_profit: number;
+  balancing_figure: number;
+  total_equity: number;
+  balanced: boolean;
+}
+
+export interface CashFlowItem {
+  code: string;
+  name: string;
+  change: number;
+}
+
+export interface CashFlowReport {
+  period_id: string | null;
+  operating: {
+    net_profit: number;
+    adjustments: CashFlowItem[];
+    net_cash: number;
+  };
+  investing: { items: CashFlowItem[]; net_cash: number };
+  financing: { items: CashFlowItem[]; net_cash: number };
+  net_increase_in_cash: number;
+  opening_cash: number;
+  closing_cash: number;
+  ties_to_cash: boolean;
+}
+
+export type ReportKind = "income-statement" | "balance-sheet" | "cash-flow";
+
+export interface JournalLine {
+  id: string;
+  journal_id: string;
+  account_code: string;
+  debit: number;
+  credit: number;
+}
+
+export interface JournalEntry {
+  id: string;
+  company_id: string;
+  period_id: string | null;
+  journal_no: string;
+  tx_date: string | null;
+  reference: string | null;
+  description: string;
+  status: string;
+  source_type: string | null;
+  source_id: string | null;
+  created_by: string | null;
+  created_at: string | null;
+  line_count?: number;
+  total_debit?: number;
+  total_credit?: number;
+  lines?: JournalLine[];
+}
+
+export interface TrialBalanceAccount {
+  code: string;
+  name: string;
+  account_type: string;
+  normal_balance: string;
+  total_debit: number;
+  total_credit: number;
+  balance: number;
+  balance_side: string;
+}
+
+export interface TrialBalance {
+  accounts: TrialBalanceAccount[];
+  total_debit: number;
+  total_credit: number;
+  balanced: boolean;
+}
