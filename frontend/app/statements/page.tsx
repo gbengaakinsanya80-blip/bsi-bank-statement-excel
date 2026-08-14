@@ -331,8 +331,8 @@ function LinkCard({
           <Select value={jobId} onChange={(e) => setJobId(e.target.value)}>
             <option value="">Choose…</option>
             {jobs.map((j) => (
-              <option key={j.id} value={j.id}>
-                {j.filename ?? j.id}
+              <option key={j.job_id} value={j.job_id}>
+                {j.filename ?? j.job_id}
               </option>
             ))}
           </Select>

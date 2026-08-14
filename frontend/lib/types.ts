@@ -320,7 +320,7 @@ export interface BankAccount {
 }
 
 export interface RawJob {
-  id: string;
+  job_id: string;
   filename: string | null;
   status: string;
   created_at: string | null;
