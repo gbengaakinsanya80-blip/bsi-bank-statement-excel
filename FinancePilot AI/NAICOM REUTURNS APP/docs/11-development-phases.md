@@ -41,8 +41,9 @@ Build order per PRD §50 (six phases), expanded into workable units. Each phase 
 - Premium report at `/reports/premium` (collections, remittances, outstanding) + monthly summary.
 - Commission report at `/reports/commission` (by risk class / insurer / client).
 - Compliance report at `/reports/compliance` (calendar-driven status, due dates, days left).
+- Master-data CRUD: add/edit/delete clients, insurers and staff from the UI (`/clients/new`, `/insurers/new`, `/staff/new` + per-record edit/delete). Works in preview mode via a local demo store (merged with built-in demo records) and against Supabase in live mode. Newly added clients/insurers appear in the New Policy dropdowns.
 - Global search (sidebar + mobile topbar) at `/search` — policies, clients, insurers, staff, returns (PRD §29).
-- **Exit criteria:** ✅ executive charts render; reports export to Excel/CSV.
+- **Exit criteria:** ✅ executive charts render; reports export to Excel/CSV; masters editable end-to-end in preview mode.
 
 ## Phase 6 — Advanced Automation
 - Email reminders (30/14/7/3/1 day, due date, daily overdue) via cron + notification preferences.

@@ -4,7 +4,8 @@ import { createServerSupabase } from "@/lib/supabase/server";
 import { listClients } from "@/lib/services/client-service";
 import { listInsurers } from "@/lib/services/insurer-service";
 import { listCurrencies, listRiskClasses } from "@/lib/services/master-data-service";
-import { demoClients, demoCurrencies, demoInsurers, demoRiskClasses } from "@/lib/demo/data";
+import { listDemoClients, listDemoInsurers } from "@/lib/demo/master-store";
+import { demoCurrencies, demoRiskClasses } from "@/lib/demo/data";
 
 export const metadata: Metadata = { title: "New policy" };
 
@@ -13,7 +14,7 @@ export default async function NewPolicyPage() {
   const demo = !supabase;
 
   const [clients, insurers, riskClasses, currencies] = demo
-    ? [demoClients, demoInsurers, demoRiskClasses, demoCurrencies]
+    ? [await listDemoClients(), await listDemoInsurers(), demoRiskClasses, demoCurrencies]
     : await Promise.all([
         listClients(supabase),
         listInsurers(supabase),

@@ -9,7 +9,7 @@ import {
   toPolicyRow,
 } from "@/lib/services/policy-service";
 import { saveStoredDemoPolicy } from "@/lib/demo/policy-store";
-import { demoClients, demoInsurers } from "@/lib/demo/data";
+import { listDemoClients, listDemoInsurers } from "@/lib/demo/master-store";
 
 export type PolicyActionState = { error?: string; fieldErrors?: Record<string, string[]> } | null;
 
@@ -68,8 +68,8 @@ export async function createPolicyAction(
   const supabase = await createServerSupabase();
   if (!supabase) {
     const data = parsed.data;
-    const client = demoClients.find((c) => c.id === data.client_id);
-    const insurer = demoInsurers.find((i) => i.id === data.insurer_id);
+    const client = (await listDemoClients()).find((c) => c.id === data.client_id);
+    const insurer = (await listDemoInsurers()).find((i) => i.id === data.insurer_id);
     const now = new Date().toISOString();
     const id = `demo-policy-${Date.now()}`;
     await saveStoredDemoPolicy({

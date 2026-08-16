@@ -34,3 +34,22 @@ export async function createInsurer(supabase: DbClient, input: InsurerInput) {
   if (error) throw new Error(error.message);
   return data as Insurer;
 }
+
+export async function updateInsurer(supabase: DbClient, id: string, input: InsurerInput) {
+  const { data, error } = await supabase
+    .from("insurers")
+    .update({ ...input, updated_at: new Date().toISOString() })
+    .eq("id", id)
+    .select()
+    .single();
+  if (error) throw new Error(error.message);
+  return data as Insurer;
+}
+
+export async function deleteInsurer(supabase: DbClient, id: string) {
+  const { error } = await supabase
+    .from("insurers")
+    .update({ deleted_at: new Date().toISOString() })
+    .eq("id", id);
+  if (error) throw new Error(error.message);
+}

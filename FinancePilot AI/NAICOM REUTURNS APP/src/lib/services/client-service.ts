@@ -34,3 +34,22 @@ export async function createClient(supabase: DbClient, input: ClientInput) {
   if (error) throw new Error(error.message);
   return data as Client;
 }
+
+export async function updateClient(supabase: DbClient, id: string, input: ClientInput) {
+  const { data, error } = await supabase
+    .from("clients")
+    .update({ ...input, updated_at: new Date().toISOString() })
+    .eq("id", id)
+    .select()
+    .single();
+  if (error) throw new Error(error.message);
+  return data as Client;
+}
+
+export async function deleteClient(supabase: DbClient, id: string) {
+  const { error } = await supabase
+    .from("clients")
+    .update({ deleted_at: new Date().toISOString() })
+    .eq("id", id);
+  if (error) throw new Error(error.message);
+}
