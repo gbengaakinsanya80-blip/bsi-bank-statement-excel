@@ -1,0 +1,1839 @@
+WORLDMark NAICOM Regulatory Returns Management System
+MASTER DEVELOPMENT PROMPT FOR OPENCODE
+
+Act as a senior full-stack software architect, insurance regulatory technology specialist, Nigerian insurance-brokerage accounting expert, UI/UX designer and database engineer.
+
+I work for WORLDMARK INSURANCE BROKERS LTD, Nigeria.
+
+I want you to build a professional web-based application called:
+
+WORLDMARK NAICOM RETURNS MANAGER
+
+The application will automate, organize, monitor, validate, generate and export the regulatory returns that Worldmark Insurance Brokers Ltd submits to NAICOM.
+
+The application must work perfectly on:
+
+Desktop PC
+Laptop
+Android phone
+iPhone
+Tablet
+Any modern web browser
+
+The data must be stored in one centralized cloud database, so that if I enter information from my phone, I can immediately see the same information on my laptop or another authorized device.
+
+Do NOT build this as an Excel-based system.
+
+Excel should only be used for:
+
+Importing existing data
+Exporting completed returns
+Downloading schedules
+Backup/export where appropriate
+
+The application must have a modern, professional, beautiful interface suitable for an insurance brokerage company.
+
+1. CORE OBJECTIVE
+
+The major problem this application must solve is:
+
+"I currently prepare different NAICOM returns manually using different Excel files. I sometimes forget deadlines, enter the same information multiple times, make inconsistent figures between returns and spend too much time preparing schedules."
+
+The application must therefore implement:
+
+ENTER ONCE → USE MANY TIMES
+
+For example:
+
+A policy/business transaction entered into the system should automatically become available for:
+
+Monthly Income Production
+Commission & Rebate Returns
+Schedule of Businesses Generated
+Form 1C
+Premium collection reports
+Premium remittance reports
+Commission reports
+Management reports
+Other applicable NAICOM schedules
+
+The user must never have to retype the same business repeatedly.
+
+2. IMPORTANT: STUDY THE EXISTING WORLDMARK FILES
+
+I have provided existing Worldmark Excel files.
+
+Study them carefully before designing the database.
+
+Files include examples of:
+
+2026 JUNE INCOME PRODUCTION.xlsx
+PPS.xlsx.csv
+2026 CRR FOR FIRST QUARTER.xlsx
+2026 BUSINESSES GENERATED FIRST HALF YEAR BUSINESSES FOR 2026.xlsx
+2026 SECOND QUARTER PERSONNEL RETURNS.xlsx
+2025 form 1c (1).xlsx
+
+Do NOT simply copy the Excel spreadsheets into the application.
+
+Instead:
+
+Study their columns.
+Identify common data.
+Identify unique data.
+Identify relationships.
+Design normalized database tables.
+Create return templates from the database.
+Preserve the ability to export in the required Excel format.
+
+The current examples show that Worldmark uses data such as:
+
+Policy number
+Endorsement number
+Transaction date
+Transaction type
+Risk type/class
+Client/insured
+Insurer
+Sum insured
+Gross premium
+Premium collected
+Premium paid
+Commission
+Commission rate
+Tax
+Net premium
+Receipt number
+Remarks
+Collection date
+Premium payment date
+Staff information
+Staff category
+Designation
+Gender
+Educational qualification
+Professional qualification
+Date of employment
+State of origin
+Location
+Date of exit
+Reason for leaving
+
+Design the application around these underlying entities rather than around individual spreadsheets.
+
+3. DATABASE ARCHITECTURE
+
+Use a proper relational cloud database.
+
+Preferred stack:
+
+Frontend
+
+Next.js + React + TypeScript
+
+UI
+
+Tailwind CSS
+
+Use a professional dashboard design.
+
+Backend
+
+Next.js server/API routes or a clean service architecture.
+
+Database
+
+Supabase PostgreSQL
+
+Authentication
+
+Supabase Auth
+
+Hosting
+
+Vercel
+
+File storage
+
+Supabase Storage
+
+Excel processing
+
+Use a reliable Excel library such as SheetJS/xlsx or ExcelJS.
+
+Charts
+
+Use Recharts or another lightweight professional chart library.
+
+Icons
+
+Lucide React.
+
+The application must be responsive/mobile-first.
+
+4. CENTRAL DATABASE DESIGN
+
+Create a normalized database.
+
+Minimum core tables:
+
+company
+
+Fields:
+
+id
+company_name
+registration_number
+NAICOM_number
+address
+phone
+email
+reporting_contact
+created_at
+updated_at
+
+Default company:
+
+WORLDMARK INSURANCE BROKERS LTD
+
+5. USERS
+
+Create:
+
+users
+
+Fields:
+
+id
+name
+email
+phone
+role
+department
+active
+last_login
+created_at
+updated_at
+
+Roles:
+
+SUPER ADMIN
+
+Full access.
+
+ADMIN
+
+Manage users, settings and returns.
+
+FINANCE
+
+Financial and commission-related returns.
+
+OPERATIONS
+
+Business/policy data.
+
+HR
+
+Personnel returns.
+
+REVIEWER
+
+Can review and approve returns.
+
+VIEWER
+
+Read-only access.
+
+6. AUDIT LOG
+
+Every important action must be recorded.
+
+Create:
+
+audit_logs
+
+Record:
+
+user
+action
+module
+record_id
+old_value
+new_value
+timestamp
+IP/device where available
+
+Actions:
+
+CREATE
+UPDATE
+DELETE
+EXPORT
+IMPORT
+APPROVE
+SUBMIT
+REOPEN
+
+Do not permanently delete important regulatory records without appropriate permission.
+
+Use soft delete where appropriate.
+
+7. MASTER BUSINESS/POLICY DATABASE
+
+Create a central table:
+
+policies
+
+Fields should include:
+
+id
+transaction_reference
+policy_number
+endorsement_number
+transaction_type
+new_or_renewal
+risk_type
+class_of_business
+client_id
+insured_name
+insurer_id
+broker_or_agent
+ledger_account
+sum_insured
+currency
+gross_premium
+premium_collected
+premium_paid_to_insurer
+brokerage_commission
+commission_rate
+tax
+other_deductions
+net_premium
+amount_received
+receipt_number
+debit_note_number
+credit_note_number
+transaction_date
+cover_from
+cover_to
+premium_collection_date
+premium_payment_date
+remarks
+created_by
+created_at
+updated_at
+
+Support both:
+
+Naira
+Foreign currency
+
+Do not hard-code currency to NGN.
+
+8. CLIENT MASTER
+
+Create:
+
+clients
+
+Fields:
+
+client_id
+client_name
+address
+phone
+email
+contact_person
+industry
+status
+created_at
+updated_at
+
+A client should be reusable across many policies.
+
+9. INSURER MASTER
+
+Create:
+
+insurers
+
+Fields:
+
+insurer_id
+insurer_name
+NAICOM_code where applicable
+address
+contact
+email
+active
+created_at
+updated_at
+
+The user should select insurers from a dropdown rather than repeatedly typing their names.
+
+10. RISK/CLASS MASTER
+
+Create configurable risk categories.
+
+Examples:
+
+Motor
+Group Life
+Fire
+Marine
+Engineering
+Oil & Gas
+Aviation
+Accident
+Bonds
+Professional Indemnity
+Public Liability
+Employers Liability
+Miscellaneous
+
+Allow administrators to add/edit categories.
+
+11. MASTER TRANSACTION ENGINE
+
+The most important feature is the transaction engine.
+
+Every business transaction entered should automatically feed the appropriate regulatory returns.
+
+Example:
+
+If I enter:
+
+Client:
+NEMA
+
+Risk:
+Motor
+
+Insurer:
+REX
+
+Gross Premium:
+₦1,015,000
+
+Commission:
+₦126,875
+
+Premium Collected:
+₦8,120,000
+
+then the system should know where that information belongs in each applicable return.
+
+Do NOT duplicate the data.
+
+Use database relationships and reporting queries.
+
+12. MONTHLY INCOME PRODUCTION
+
+Create a dedicated module:
+
+Income Production
+
+The application must reproduce the structure of the Worldmark monthly Income Production spreadsheet.
+
+Include fields such as:
+
+S/N
+Date
+Transaction Reference
+Policy Number
+Endorsement
+Transaction Type
+Period From
+Period To
+Assured
+Customer Name
+Other Broker/Agent
+Ledger Account Number
+Sum Insured
+Gross Premium
+Brokerage Commission
+Net Premium
+Policy Tenor
+End Date
+Debit Note Number
+Credit Note Number
+Premium/Collection information
+Remarks
+
+Allow:
+
+Add
+Edit
+Delete
+Search
+Filter
+Sort
+Duplicate
+Bulk import
+Excel export
+Print
+PDF export
+
+Filters:
+
+Month
+Year
+Client
+Insurer
+Risk class
+Transaction type
+Staff/broker
+
+Automatically calculate totals.
+
+13. COMMISSION AND REBATE RETURNS (CRR)
+
+Create:
+
+Commission & Rebate Returns
+
+Based on the Worldmark CRR spreadsheet.
+
+Fields:
+
+Date
+Policy Number
+Risk Type
+Client Name
+Insurer
+Sum Insured
+Gross Premium
+Approved Commission Rate
+Tax Paid
+Net Commission Rate
+Brokerage Commission
+Other Deduction
+Net Premium
+Amount Received
+Receipt Number
+Remarks
+
+Automatic calculations:
+
+Commission =
+Gross Premium × Commission Rate
+
+Net Commission Rate =
+Commission Rate - applicable deductions where appropriate
+
+Net Premium =
+Gross Premium - Brokerage Commission - Other Deduction
+
+However, calculations must be configurable because regulatory treatment may differ by return.
+
+Never silently alter user-entered figures.
+
+Flag discrepancies.
+
+14. SCHEDULE OF BUSINESSES GENERATED
+
+Create:
+
+Businesses Generated
+
+Based on the Worldmark half-year schedule.
+
+Fields:
+
+S/N
+Insured
+Class of Business
+Insurer
+Gross Premium Naira
+Gross Premium Dollar
+Premium Collected Naira
+Premium Collected Dollar
+Date of Collection
+Premium Paid Naira
+Premium Paid Dollar
+Date Premium Paid
+Brokerage Commission Naira
+Brokerage Commission Dollar
+
+Automatically calculate totals.
+
+Allow reporting periods:
+
+First Half
+Second Half
+Full Year
+15. PERSONNEL RETURNS
+
+Create:
+
+Personnel Returns
+
+Based on Worldmark's existing Personnel Returns spreadsheet.
+
+Fields:
+
+S/N
+Staff Name
+Staff Category
+Designation
+Gender
+Educational Qualification
+Professional Qualification
+Date of Employment
+State of Origin
+Location
+Date of Exit
+Reason for Leaving
+
+Create a permanent:
+
+Staff Master
+
+The quarterly personnel return should be generated from the staff master.
+
+If a staff member resigns:
+
+Update the staff master once.
+
+The relevant quarterly return should automatically reflect the change.
+
+Maintain historical records.
+
+Do not overwrite historical regulatory submissions.
+
+16. FORM 1C
+
+Create:
+
+Form 1C
+
+Based on the supplied Worldmark 2025 Form 1C.
+
+Fields include:
+
+Item
+Insurer
+Gross Premium
+Premium Collected
+Premium Paid to Insurer
+Commission
+
+The system should automatically calculate totals.
+
+Allow manual adjustment only with:
+
+reason
+user
+date
+audit log
+
+Form 1C must be generated from underlying policy/business records where possible.
+
+17. PPS RETURN
+
+Study the supplied PPS file carefully.
+
+Determine:
+
+What PPS means in Worldmark's existing NAICOM reporting process.
+Its exact columns.
+Its reporting frequency.
+Its relationship to the master transaction data.
+Which fields can be automatically populated.
+
+Do not guess the meaning of an ambiguous field.
+
+If the source file cannot be reliably parsed, create an import-mapping interface that allows the administrator to map the columns.
+
+18. OTHER NAICOM RETURNS
+
+The system must NOT be limited to only the six spreadsheets supplied.
+
+Create a configurable:
+
+Regulatory Returns Catalogue
+
+Each return should have:
+
+Return Name
+Return Code/Form Number
+Frequency
+Reporting Period
+Due Date
+Responsible Department
+Responsible User
+Data Source
+Status
+Submission Date
+Submission Reference
+Attachment
+Reviewer
+Approval Date
+Notes
+
+Frequencies:
+
+Monthly
+Quarterly
+Half-Yearly
+Annual
+Ad-hoc
+
+The administrator should be able to add a new return without redesigning the whole application.
+
+19. RETURN DEADLINE MANAGEMENT
+
+This is one of the most important features.
+
+Create:
+
+Regulatory Calendar
+
+Every return must have:
+
+Reporting period
+Start date
+End date
+Due date
+Days remaining
+Responsible person
+Department
+Status
+
+Statuses:
+
+NOT STARTED
+IN PROGRESS
+READY FOR REVIEW
+APPROVED
+SUBMITTED
+OVERDUE
+NOT APPLICABLE
+
+Dashboard should display:
+
+RED
+
+Overdue
+
+ORANGE
+
+Due within 7 days
+
+YELLOW
+
+Due within 14 days
+
+GREEN
+
+Completed
+
+20. AUTOMATIC REMINDERS
+
+The system must prevent me from forgetting returns.
+
+Send reminders through configurable channels.
+
+Minimum:
+
+In-app notification
+Email
+
+Optional:
+
+WhatsApp
+SMS
+
+Reminder schedule:
+
+30 days before
+14 days before
+7 days before
+3 days before
+1 day before
+Due date
+Daily after overdue
+
+Do not send duplicate notifications unnecessarily.
+
+Allow each user to configure notification preferences.
+
+21. DASHBOARD
+
+Create a beautiful executive dashboard.
+
+At the top display cards:
+
+TOTAL RETURNS
+COMPLETED
+IN PROGRESS
+DUE SOON
+OVERDUE
+SUBMITTED
+PENDING REVIEW
+
+Then display:
+
+Regulatory Calendar
+
+A calendar showing all upcoming returns.
+
+Returns Status
+
+Table:
+
+| Return | Period | Due Date | Responsible Person | Status |
+
+Recent Activity
+
+Show:
+
+Recently created
+Recently edited
+Recently exported
+Recently submitted
+Business Statistics
+
+Show:
+
+Gross premium
+Premium collected
+Premium outstanding
+Premium paid
+Commission
+Number of policies
+Number of clients
+Number of insurers
+
+Allow period selection:
+
+This month
+This quarter
+Half year
+Year
+Custom period
+22. DATA VALIDATION ENGINE
+
+Before a return can be marked "READY FOR REVIEW", perform validation.
+
+Examples:
+
+Missing policy number
+Missing client
+Missing insurer
+Missing risk class
+Missing premium
+Negative amount
+Invalid date
+Collection greater than expected amount
+Premium paid greater than premium collected
+Commission inconsistent with commission rate
+Duplicate policy
+Duplicate transaction
+Missing required personnel field
+Missing required return field
+
+Display:
+
+DATA QUALITY SCORE
+
+Example:
+
+98% Complete
+
+and list outstanding errors.
+
+23. CROSS-RETURN RECONCILIATION
+
+This is a major feature.
+
+The system must compare different returns generated from the same underlying data.
+
+For example:
+
+Income Production total commission
+versus
+CRR commission
+
+Business Generated premium
+versus
+Income Production premium
+
+Form 1C figures
+versus
+underlying transactions
+
+If there is a difference, display:
+
+RECONCILIATION WARNING
+
+Example:
+
+"CRR brokerage commission is ₦12,500,000 while Income Production shows ₦12,650,000. Difference: ₦150,000."
+
+Allow the user to investigate the underlying transactions.
+
+24. EXCEL IMPORT
+
+Create a powerful Excel import system.
+
+User should be able to upload existing Excel files.
+
+Process:
+
+UPLOAD → READ → PREVIEW → MAP COLUMNS → VALIDATE → IMPORT
+
+Do not automatically import bad data.
+
+Show:
+
+Number of rows
+Valid rows
+Invalid rows
+Duplicate rows
+Missing fields
+
+Allow:
+
+Import Valid Records
+
+and
+
+Download Error Report
+25. EXCEL EXPORT
+
+Every return must have:
+
+EXPORT TO EXCEL
+
+The exported Excel file must resemble the Worldmark/NAICOM format.
+
+Do not export a generic database dump.
+
+Export:
+
+Correct headers
+Correct column order
+Correct calculations
+Correct reporting period
+Company name
+Return name
+Appropriate formatting
+Totals
+Naira formatting
+Dollar formatting where applicable
+Dates
+Borders
+Professional layout
+
+Also provide:
+
+Export CSV
+Print
+PDF
+26. RETURN VERSION CONTROL
+
+Never destroy previously submitted returns.
+
+Example:
+
+Q1 2026 CRR
+
+Version 1
+Submitted
+
+Later correction:
+
+Version 2
+Amended
+
+Store:
+
+Original
+Amendment
+Reason
+User
+Date
+Approval
+27. SUBMISSION TRACKING
+
+The app does NOT need to pretend to submit directly to NAICOM unless NAICOM provides an approved API and the integration is legally/technically permitted.
+
+Instead provide:
+
+MARK AS SUBMITTED
+
+Fields:
+
+Submission date
+NAICOM submission reference
+Submitted by
+Submission method
+Receipt/upload evidence
+Notes
+
+Allow attachment of:
+
+NAICOM acknowledgement
+Receipt
+Submitted Excel
+PDF
+Screenshots
+
+If a future official NAICOM API becomes available, design the architecture so an integration can be added.
+
+NAICOM's portal provides broker functionality and indicates that brokers interface with NAICOM to provide information satisfying regulatory requirements.
+
+28. DOCUMENT STORAGE
+
+Every return should have an attachments section.
+
+Example:
+
+CRR Q1 2026
+
+Attachments:
+
+CRR Excel
+Supporting schedule
+Payment evidence
+NAICOM acknowledgement
+Correspondence
+
+Use secure cloud storage.
+
+29. SEARCH
+
+Global search should search:
+
+Client
+Policy number
+Insurer
+Transaction reference
+Return
+Staff
+Receipt number
+Submission reference
+
+Example:
+
+Search:
+
+"NEMA"
+
+should return all relevant policies, returns, commissions and reports.
+
+30. MOBILE DESIGN
+
+The application must be genuinely usable on a phone.
+
+Do NOT simply shrink the desktop version.
+
+On mobile:
+
+Bottom navigation
+Large buttons
+Responsive forms
+Search
+Quick Add
+Dashboard cards
+Swipe-friendly tables
+Mobile filters
+Floating Add button
+
+Main mobile navigation:
+
+Dashboard
+Returns
+Business
+Staff
+Calendar
+Reports
+More
+
+31. QUICK ENTRY
+
+Create a very fast:
+
+QUICK ADD BUSINESS
+
+form.
+
+The user should be able to enter:
+
+Date
+Client
+Insurer
+Risk
+Policy number
+Gross premium
+Premium collected
+Premium paid
+Commission
+Transaction type
+
+Then click:
+
+SAVE BUSINESS
+
+The application should automatically create the related records required by the reporting engine.
+
+32. DUPLICATE DETECTION
+
+Before saving, check for duplicates using combinations such as:
+
+Policy number
+Transaction reference
+Client
+Insurer
+Date
+Premium
+
+If a likely duplicate exists:
+
+Show:
+
+POSSIBLE DUPLICATE
+
+Do you want to continue?
+
+33. REPORT BUILDER
+
+Create a reporting module where authorized users can generate:
+
+Monthly income report
+Quarterly income report
+Commission report
+Premium collection report
+Premium outstanding report
+Premium remittance report
+Client report
+Insurer report
+Risk class report
+Staff report
+Regulatory compliance report
+
+Allow:
+
+Date filter
+Client filter
+Insurer filter
+Risk filter
+Currency filter
+
+Export to Excel/PDF.
+
+34. MANAGEMENT REPORTS
+
+Create an executive management section.
+
+Charts:
+
+Monthly premium trend
+Monthly commission trend
+Premium collected trend
+Premium outstanding
+Business by insurer
+Business by class
+Business by client
+Commission by class
+35. SECURITY
+
+Implement:
+
+Supabase authentication
+Email/password login
+Password reset
+Role-based access
+Row-level security
+Secure database policies
+HTTPS
+Audit trail
+Session management
+
+Users must only access information permitted by their role.
+
+Never expose Supabase service-role keys in frontend code.
+
+Never hard-code passwords or API keys.
+
+Use environment variables.
+
+36. BACKUP
+
+Implement database backup strategy.
+
+Provide:
+
+EXPORT ALL DATA
+
+for authorized administrators.
+
+Include:
+
+Business data
+Clients
+Insurers
+Staff
+Returns
+Submission records
+Audit logs where appropriate
+37. SETTINGS
+
+Create:
+
+SETTINGS
+
+Sections:
+
+Company
+Company name
+Address
+Logo
+NAICOM details
+Users
+Return Types
+Risk Classes
+Insurers
+Reminder Settings
+Email Settings
+Currency
+Financial Year
+Numbering
+Import/Export Templates
+38. BEAUTIFUL UI DESIGN
+
+The application must look like a premium modern financial SaaS product.
+
+Design inspiration:
+
+Modern banking applications
+Bloomberg-style information density
+Professional accounting software
+Modern insurance platforms
+
+Use:
+
+Clean white/dark surfaces
+Professional blue/navy primary colour
+Subtle gradients
+Rounded cards
+Elegant typography
+Clear status badges
+Excellent spacing
+Professional charts
+Smooth animations
+Responsive tables
+Modal forms
+Toast notifications
+
+Do NOT make it childish or overly colourful.
+
+The interface should look like software a major insurance brokerage would pay for.
+
+Application name:
+
+WORLDMARK REGULATORY HUB
+
+Subtitle:
+
+NAICOM RETURNS MANAGEMENT SYSTEM
+39. MAIN SIDEBAR
+
+Desktop sidebar:
+
+Dashboard
+
+Business
+
+Policies
+Clients
+Insurers
+Transactions
+Collections
+Remittances
+
+NAICOM Returns
+
+All Returns
+Monthly Returns
+Quarterly Returns
+Half-Year Returns
+Annual Returns
+Return Calendar
+
+Personnel
+
+Staff
+Personnel Returns
+
+Reports
+
+Management Reports
+Reconciliation
+Premium Reports
+Commission Reports
+
+Documents
+
+Audit Trail
+
+Settings
+
+40. RETURN WORKFLOW
+
+Every return should follow:
+
+DRAFT
+↓
+DATA VALIDATION
+↓
+READY FOR REVIEW
+↓
+REVIEWED
+↓
+APPROVED
+↓
+EXPORTED
+↓
+SUBMITTED
+↓
+ACKNOWLEDGED
+↓
+CLOSED
+
+Allow reopening only for authorized users.
+
+41. RETURN TEMPLATE ENGINE
+
+Do not hard-code every return into separate programming logic.
+
+Create a configurable return-template system.
+
+Each template contains:
+
+Name
+Code
+Frequency
+Columns
+Database source
+Calculations
+Validation rules
+Export format
+Due-date rules
+
+This means when NAICOM introduces a new return, the administrator can configure it without rebuilding the entire system.
+
+42. REGULATORY CALENDAR ENGINE
+
+Create configurable due-date rules.
+
+For example:
+
+Monthly:
+Reporting month → due date according to applicable NAICOM requirement.
+
+Quarterly:
+Q1
+Q2
+Q3
+Q4
+
+Half-year:
+H1
+H2
+
+Annual:
+Full year
+
+IMPORTANT:
+
+Do NOT hard-code regulatory deadlines based on assumptions.
+
+Store deadlines in a configurable table.
+
+Allow administrator to change deadlines when NAICOM issues a circular or changes the filing requirement.
+
+Where the system cannot confirm a deadline, mark it:
+
+"Deadline requires confirmation."
+
+43. REGULATORY SOURCE REGISTER
+
+Create a section:
+
+Regulatory References
+
+Store:
+
+Regulation/guideline
+Circular
+Return requirement
+Effective date
+Source
+Document
+Last reviewed date
+
+The administrator can update regulatory requirements when NAICOM changes them.
+
+This is important because the regulatory framework can change.
+
+The 2025 Nigerian Insurance Industry Reform Act also contains provisions relating to insurance intermediaries and regulatory requirements, so the system must be designed to accommodate future changes rather than treating today's return structure as permanently fixed.
+
+44. IMPORTANT ACCOUNTING PRINCIPLE
+
+Do not use the return spreadsheets as the primary database.
+
+The hierarchy should be:
+
+MASTER DATA
+↓
+BUSINESS TRANSACTIONS
+↓
+ACCOUNTING/RECONCILIATION DATA
+↓
+REGULATORY REPORTING ENGINE
+↓
+NAICOM RETURNS
+
+This prevents inconsistent figures.
+
+45. ERROR HANDLING
+
+The application must never crash because a user enters:
+
+"NIL"
+blank value
+text in a numeric field
+invalid date
+invalid percentage
+comma-formatted number
+currency symbol
+unexpected Excel format
+
+Instead:
+
+Validate
+Explain the error
+Allow correction
+Preserve original imported value where necessary
+
+Example:
+
+If user enters:
+
+"12..5"
+
+for commission rate,
+
+show:
+
+"Invalid percentage. Enter a number such as 12.5."
+
+46. NIL VALUES
+
+Regulatory spreadsheets often contain values such as:
+
+The application should store proper database NULL values internally.
+
+During Excel export, convert NULL into the appropriate output representation required by that return.
+
+Do NOT store "NIL" as a numeric value.
+
+47. DATA IMPORT MAPPING
+
+When importing existing Worldmark Excel files, allow mapping:
+
+Excel Column → Database Field
+
+Example:
+
+"NAME OF CUSTOMER"
+→ client_name
+
+"NAME OF INSURER"
+→ insurer_name
+
+"GROSS PREMIUM"
+→ gross_premium
+
+"PREMIUM PAID"
+→ premium_paid_to_insurer
+
+Allow the mapping to be saved as a reusable template.
+
+48. INITIAL DATA MIGRATION
+
+Create a migration process for the existing Worldmark Excel files.
+
+Import historical data where possible.
+
+Before importing:
+
+Detect duplicates
+Normalize insurer names
+Normalize client names
+Normalize risk types
+Normalize dates
+Normalize currency
+Validate amounts
+
+Never modify the original files.
+
+49. DATA NORMALIZATION
+
+Examples:
+
+"EMPLE"
+"EMPLE INS"
+"Emple Insurance"
+
+should be identified as possible variants of the same insurer.
+
+But NEVER automatically merge records without confirmation.
+
+Provide:
+
+POSSIBLE DUPLICATE MASTER DATA
+
+for administrator review.
+
+50. PHASED DEVELOPMENT
+
+Do not try to build everything at once.
+
+Build in phases.
+
+PHASE 1 — FOUNDATION
+
+Build:
+
+Authentication
+Database
+Company
+Users
+Clients
+Insurers
+Risk Classes
+Business Transactions
+Dashboard
+Audit log
+PHASE 2 — CORE RETURNS
+
+Build:
+
+Income Production
+CRR
+Businesses Generated
+Personnel Returns
+Form 1C
+PHASE 3 — COMPLIANCE
+
+Build:
+
+Regulatory Calendar
+Deadline reminders
+Return workflow
+Validation engine
+Reconciliation
+PHASE 4 — IMPORT/EXPORT
+
+Build:
+
+Excel import
+Excel mapping
+Excel export
+PDF
+Attachments
+PHASE 5 — MANAGEMENT
+
+Build:
+
+Management dashboard
+Charts
+Advanced reports
+Analytics
+PHASE 6 — ADVANCED AUTOMATION
+
+Build:
+
+Email reminders
+WhatsApp/SMS integration if configured
+Regulatory update system
+Future NAICOM integration if officially supported
+51. DEVELOPMENT RULE
+
+Do NOT create fake functionality.
+
+If a feature cannot be implemented because an external API is unavailable, clearly indicate:
+
+"Integration not configured."
+
+Do not pretend that the system has submitted anything to NAICOM.
+
+52. TESTING
+
+Create automated tests for:
+
+Database operations
+Calculations
+Commission
+Premium
+Date periods
+Quarterly periods
+Half-year periods
+Annual periods
+Excel import
+Excel export
+Duplicate detection
+User permissions
+Return validation
+Deadline calculations
+
+Also perform manual mobile testing.
+
+Test at:
+
+360px
+390px
+430px
+768px
+1024px
+1440px+
+53. DEMO DATA
+
+Create sample demo data clearly marked:
+
+DEMO
+
+Do not mix demo data with real Worldmark data.
+
+54. DEVELOPMENT DOCUMENTATION
+
+Create:
+
+README.md
+
+Include:
+
+Architecture
+Installation
+Environment variables
+Supabase setup
+Database migrations
+Vercel deployment
+Local development
+Excel import
+User management
+Backup
+Troubleshooting
+
+Also create:
+
+DATABASE.md
+
+RETURN_ENGINE.md
+
+DEPLOYMENT.md
+
+USER_GUIDE.md
+
+55. ENVIRONMENT VARIABLES
+
+Create .env.example.
+
+Never commit secrets.
+
+Use placeholders for:
+
+SUPABASE_URL
+SUPABASE_ANON_KEY
+SUPABASE_SERVICE_ROLE_KEY
+EMAIL_API_KEY
+OTHER_INTEGRATION_KEYS
+
+Do not put real secrets in GitHub.
+
+56. GITHUB
+
+Prepare the project for GitHub.
+
+Use a clean Git structure.
+
+Create:
+
+README
+.gitignore
+.env.example
+database migrations
+source code
+tests
+documentation
+
+Never commit:
+
+.env
+API keys
+passwords
+service-role credentials
+private certificates
+
+57. VERCEL
+
+The application should be deployable to Vercel.
+
+Make sure:
+
+Build succeeds
+Environment variables are documented
+Production configuration is separated from development
+Supabase works in production
+Authentication redirects work
+File uploads work
+Excel exports work
+58. ACCEPTANCE CRITERIA
+
+The project is not complete until I can:
+
+Open the application on my phone.
+Log in.
+Open it on my laptop.
+Log in with the same account.
+See the same data.
+Add a business on my phone.
+See it immediately on my laptop.
+Edit it.
+Delete/archive it according to permissions.
+Generate a monthly return.
+Generate a quarterly return.
+Generate a half-year return.
+Generate an annual return.
+Export each to Excel.
+Search records.
+Import old Excel records.
+Detect duplicates.
+See upcoming deadlines.
+Receive reminders.
+See overdue returns.
+Track submission.
+Attach submission evidence.
+Reconcile figures between returns.
+Maintain an audit trail.
+Restrict users according to their roles.
+59. VERY IMPORTANT IMPLEMENTATION INSTRUCTION
+
+Before writing large amounts of code:
+
+STEP 1
+
+Inspect all supplied Worldmark Excel files.
+
+STEP 2
+
+Create a data dictionary.
+
+STEP 3
+
+Create an ER/database relationship diagram.
+
+STEP 4
+
+Identify which fields are common across returns.
+
+STEP 5
+
+Identify which fields are return-specific.
+
+STEP 6
+
+Create the Supabase database schema.
+
+STEP 7
+
+Create seed/master data.
+
+STEP 8
+
+Build authentication and roles.
+
+STEP 9
+
+Build the master transaction module.
+
+STEP 10
+
+Build the return engine.
+
+STEP 11
+
+Build the first five returns.
+
+STEP 12
+
+Build validation/reconciliation.
+
+STEP 13
+
+Build deadline/reminder system.
+
+STEP 14
+
+Build Excel import/export.
+
+STEP 15
+
+Build the professional dashboard.
+
+STEP 16
+
+Test thoroughly.
+
+Do NOT skip directly to UI screens without designing the data architecture.
+
+60. FIRST DELIVERABLE
+
+Before implementing the application, produce:
+
+Complete database schema
+ER diagram
+Data dictionary
+Return catalogue
+Return frequency matrix
+Return-to-database mapping
+User roles/permissions matrix
+Application sitemap
+UI screen list
+Technical architecture
+Development phases
+Testing strategy
+Excel import strategy
+Excel export strategy
+Regulatory deadline configuration strategy
+
+Then wait for approval before proceeding to the next major phase.
+
+FINAL PRODUCT VISION
+
+The finished application should feel like:
+
+"QuickBooks + Regulatory Calendar + NAICOM Return Generator + Insurance Business Database"
+
+but specifically designed for:
+
+WORLDMARK INSURANCE BROKERS LTD
+
+The central philosophy is:
+
+ENTER DATA ONCE.
+VALIDATE IT ONCE.
+USE IT FOR MANY RETURNS.
+NEVER MISS A NAICOM DEADLINE.
+KEEP A COMPLETE AUDIT TRAIL.
+WORK FROM PHONE OR PC.
+ONE CLOUD DATABASE.
+PROFESSIONAL. SECURE. BEAUTIFUL. SCALABLE.
+
+Do not build a collection of disconnected forms.
+
+Build a regulatory data platform.
