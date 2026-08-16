@@ -1,7 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { requireUser } from "@/lib/auth/guard";
+import { requireAppUser } from "@/lib/auth/guard";
 import { createServerSupabase } from "@/lib/supabase/server";
 import {
   coerceDates,
@@ -22,7 +22,7 @@ export async function createPolicyAction(
   _prevState: PolicyActionState,
   formData: FormData
 ): Promise<PolicyActionState> {
-  const user = await requireUser();
+  const user = await requireAppUser();
 
   const raw: Record<string, unknown> = {
     policy_number: formData.get("policy_number"),

@@ -8,7 +8,9 @@ export interface StoredDemoPolicy extends Policy {
   insurers: { insurer_name: string } | null;
 }
 
-const STORE_PATH = path.join(os.tmpdir(), "worldmark-demo-policies.json");
+const STORE_PATH =
+  process.env.WORLDMARK_POLICY_STORE_PATH ??
+  path.join(os.tmpdir(), "worldmark-demo-policies.json");
 
 let writeChain: Promise<unknown> = Promise.resolve();
 

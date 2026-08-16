@@ -8,6 +8,7 @@ export default defineConfig({
     include: ["tests/**/*.test.ts"],
     env: {
       WORLDMARK_MASTER_STORE_PATH: path.join(os.tmpdir(), "worldmark-demo-masters-test.json"),
+      WORLDMARK_POLICY_STORE_PATH: path.join(os.tmpdir(), "worldmark-demo-policies-test.json"),
     },
   },
   resolve: {
