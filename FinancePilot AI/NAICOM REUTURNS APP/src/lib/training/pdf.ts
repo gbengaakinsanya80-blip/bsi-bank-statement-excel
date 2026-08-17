@@ -71,7 +71,7 @@ function drawTableHeader(
   fontSize: number
 ): number {
   const rowHeight = 20;
-  let y = startY;
+  const y = startY;
   let xCursor = x;
   widths.forEach((w, i) => {
     page.drawRectangle({
@@ -107,7 +107,7 @@ function drawTableRows(
   let y = startY;
   rows.forEach((row, rIdx) => {
     let xCursor = x;
-    let maxH = rowHeight;
+    const maxH = rowHeight;
     row.forEach((cell, cIdx) => {
       const w = widths[cIdx];
       const bg = rIdx % 2 === 1 ? LIGHT : rgb(1, 1, 1);

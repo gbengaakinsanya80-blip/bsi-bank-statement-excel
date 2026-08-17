@@ -4,7 +4,6 @@ import { Pencil, Plus, Download } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { buttonVariants } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { listDemoTrainingRecords } from "@/lib/demo/training-store";
 import { deleteTrainingAction } from "@/lib/services/training-actions";
