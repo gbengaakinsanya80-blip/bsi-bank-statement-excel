@@ -39,3 +39,11 @@ backend/data/
 # Render / Vercel local state
 .rvercel/
 .vercel/
+
+# Data files (user uploads / exports)
+*.xlsx
+*.xls
+*.csv
+*.pdf
+*.docx
+*.doc

@@ -17,6 +17,13 @@ describe("export formats", () => {
       "BUSINESSES_GENERATED",
       "PERSONNEL",
       "FORM_1C",
+      "BROKERAGE_COMMISSION",
+      "NEW_POLICIES",
+      "RENEWAL_POLICIES",
+      "FORM_7_2B",
+      "FORM_7_2C",
+      "CLAIMS_AWAITING",
+      "BIZ_SCHEDULE",
     ];
     for (const code of codes) {
       expect(EXPORT_FORMATS[code]).toBeDefined();
@@ -91,6 +98,28 @@ describe("return workbook", () => {
     expect(sheets).toHaveLength(2);
     expect(sheets[0].name).toBe("FIRST SCHEDULE");
     expect(sheets[1].name).toBe("SECOND SCHEDULE");
+  });
+
+  it("builds a form 7.2B workbook with its own title and headers", () => {
+    const sheets = buildReturnSheets({
+      code: "FORM_7_2B",
+      rows: [
+        { month: "2026-01", sn: 1, name_of_insured: "ADEWALE & CO", insurer: "EMPLE", total_gross_premium: 153000, net_premium: 139230, premium_received_by_broker: 153000, total_commission_fee: 13770, commission_income_earned: 13770, deferred_commission: 0 },
+      ],
+      totals: [{ label: "Total gross premium (d)", value: 153000 }],
+      periodLabel: "H1 2026",
+    });
+    expect(sheets).toHaveLength(1);
+    expect(sheets[0].rows[0][0]).toContain("FORM 7.2B");
+    expect(sheets[0].rows[3]).toContain("NAME OF INSURED/POLICY NO.");
+    const result = buildReturnWorkbook({
+      code: "FORM_7_2B",
+      rows: [],
+      totals: [],
+      periodLabel: "H1 2026",
+    });
+    expect(result.filename).toBe("FORM_7_2B-H1-2026.xlsx");
+    expect(result.buffer.subarray(0, 2).toString("latin1")).toBe("PK");
   });
 
   it("returns a buffer and a safe filename", () => {

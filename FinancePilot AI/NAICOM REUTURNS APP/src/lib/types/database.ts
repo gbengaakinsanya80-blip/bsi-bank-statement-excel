@@ -194,3 +194,37 @@ export interface AuditLog {
   device: string | null;
   created_at: string;
 }
+
+export type TrainingType =
+  | "TECHNICAL"
+  | "COMPLIANCE"
+  | "MANAGEMENT"
+  | "SAFETY"
+  | "SOFT_SKILLS"
+  | "OTHER";
+
+export type TrainingStatus = "SCHEDULED" | "COMPLETED" | "CANCELLED";
+
+export interface TrainingRecord {
+  id: string;
+  staff_name: string;
+  position: string | null;
+  training_title: string;
+  training_type: TrainingType | null;
+  organizer: string;
+  training_date: string;
+  training_end_date: string | null;
+  duration_hours: number | null;
+  training_location: string | null;
+  what_was_learned: string | null;
+  certificate_available: boolean;
+  certificate_file_name: string | null;
+  certificate_file_data: string | null;
+  training_cost: number | null;
+  status: TrainingStatus;
+  remarks: string | null;
+  is_demo: boolean;
+  deleted_at: string | null;
+  created_at: string;
+  updated_at: string;
+}

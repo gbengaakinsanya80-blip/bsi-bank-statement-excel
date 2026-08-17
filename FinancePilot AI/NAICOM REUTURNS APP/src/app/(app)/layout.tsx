@@ -6,6 +6,7 @@ import { isSupabaseConfigured } from "@/lib/config";
 import { DEMO_SESSION_COOKIE, demoUser } from "@/lib/demo/data";
 import { buildCalendarYear } from "@/lib/compliance/calendar";
 import {
+  deriveBoardNotifications,
   deriveDemoNotifications,
   withReadState,
   type AppNotification,
@@ -14,6 +15,7 @@ import {
 import { listDemoReturns } from "@/lib/returns/demo-store";
 import { getReturnDefinition } from "@/lib/returns/definitions";
 import { validateReturn } from "@/lib/compliance/validation";
+import { listDemoMeetings } from "@/lib/demo/board-store";
 import type { AppUser } from "@/lib/types/database";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
@@ -86,7 +88,9 @@ async function demoNotifications(): Promise<AppNotification[]> {
       quality: { errorCount: quality.errorCount, warningCount: quality.warningCount, hasErrors: quality.hasErrors },
     };
   });
-  return withReadState(deriveDemoNotifications(calendar, refs));
+  const boardMeetings = await listDemoMeetings();
+  const all = [...deriveDemoNotifications(calendar, refs), ...deriveBoardNotifications(boardMeetings)];
+  return withReadState(all);
 }
 
 function nullUser(email: string): AppUser {

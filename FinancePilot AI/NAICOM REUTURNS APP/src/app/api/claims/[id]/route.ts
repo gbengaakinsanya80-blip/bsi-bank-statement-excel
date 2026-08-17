@@ -1,0 +1,23 @@
+import { NextRequest, NextResponse } from "next/server";
+import { updateClaim, deleteClaim } from "@/lib/returns/claims-store";
+
+export async function PATCH(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { id } = await params;
+  const body = await req.json();
+  const ok = await updateClaim(id, body);
+  if (!ok) return NextResponse.json("Claim not found", { status: 404 });
+  return NextResponse.json({ ok: true });
+}
+
+export async function DELETE(
+  _req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { id } = await params;
+  const ok = await deleteClaim(id);
+  if (!ok) return NextResponse.json("Claim not found", { status: 404 });
+  return NextResponse.json({ ok: true });
+}

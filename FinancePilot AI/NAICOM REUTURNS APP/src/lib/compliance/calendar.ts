@@ -58,6 +58,30 @@ export const DEFAULT_DUE_DATE_RULES: Record<string, DueDateRule> = {
     confirmed: true,
     source: "NAICOM annual returns — due 31 January of the following year",
   },
+  FORM_7_2B: {
+    frequency: "HALF_YEARLY",
+    days_after_period_end: 30,
+    confirmed: true,
+    source: "NAICOM half-yearly returns directive",
+  },
+  FORM_7_2C: {
+    frequency: "HALF_YEARLY",
+    days_after_period_end: 30,
+    confirmed: true,
+    source: "NAICOM half-yearly returns directive",
+  },
+  CLAIMS_AWAITING: {
+    frequency: "QUARTERLY",
+    days_after_period_end: 21,
+    confirmed: true,
+    source: "NAICOM quarterly claims returns directive",
+  },
+  BIZ_SCHEDULE: {
+    frequency: "QUARTERLY",
+    days_after_period_end: 21,
+    confirmed: true,
+    source: "NAICOM quarterly business schedule directive",
+  },
 };
 
 const DAY = 24 * 60 * 60 * 1000;

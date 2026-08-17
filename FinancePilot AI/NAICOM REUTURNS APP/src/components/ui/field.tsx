@@ -36,11 +36,13 @@ export function Select({
 export function Field({
   label,
   error,
+  hint,
   children,
   className,
 }: {
   label: string;
   error?: string;
+  hint?: string;
   children: React.ReactNode;
   className?: string;
 }) {
@@ -48,6 +50,7 @@ export function Field({
     <div className={cn("space-y-1.5", className)}>
       <Label>{label}</Label>
       {children}
+      {hint && !error && <p className="text-xs text-muted-foreground">{hint}</p>}
       {error && <p className="text-xs text-destructive">{error}</p>}
     </div>
   );

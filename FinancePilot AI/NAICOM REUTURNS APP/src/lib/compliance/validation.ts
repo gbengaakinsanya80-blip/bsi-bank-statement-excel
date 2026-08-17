@@ -62,6 +62,61 @@ const VALIDATION_CONFIGS: Record<string, ReturnValidationConfig> = {
     money: [],
     dates: [],
   },
+  NEW_POLICIES: {
+    required: { policy_no: "Policy No", insured: "Name of Insured", insurer: "Name of Insurer", gross_premium: "Gross premium" },
+    money: ["sum_insured", "gross_premium", "premium_collected", "premium_paid_to_insurer", "brokerage_commission", "tax", "net_premium"],
+    dates: ["transaction_date", "premium_due_date", "cover_from", "cover_to", "renewal_due_date", "premium_collection_date", "premium_payment_date"],
+  },
+  RENEWAL_POLICIES: {
+    required: { policy_no: "Policy No", insured: "Name of Insured", insurer: "Name of Insurer", gross_premium: "Gross premium" },
+    money: ["sum_insured", "gross_premium", "premium_collected", "premium_paid_to_insurer", "brokerage_commission", "tax", "net_premium"],
+    dates: ["transaction_date", "premium_due_date", "cover_from", "cover_to", "renewal_due_date", "premium_collection_date", "premium_payment_date"],
+  },
+  FORM_7_2B: {
+    required: {
+      name_of_insured: "Name of insured/Policy no",
+      insurer: "Name of insurer",
+      total_gross_premium: "Total gross premium",
+    },
+    money: [
+      "sum_insured",
+      "premium_paid_directly",
+      "premium_paid_to_brokers_local",
+      "premium_paid_to_brokers_foreign",
+      "total_gross_premium",
+      "net_premium",
+      "clients_bank",
+      "premium_received_by_broker",
+      "total_commission_fee",
+      "commission_due_to_cobrokers",
+      "commission_due_to_reporting",
+      "commission_income_earned",
+      "deferred_commission",
+    ],
+    dates: ["sd", "ed", "date_received"],
+  },
+  FORM_7_2C: {
+    required: { name_of_insured: "Name of insured/Policy no", insurer: "Name of insurer" },
+    money: [
+      "total_received",
+      "premium_due_to_insurers",
+      "deposit_by_insured",
+      "returned_premium_due",
+      "claims_due",
+      "vat_due",
+      "commission_due_cobrokers",
+      "commission_due_reporting",
+      "premium_remitted",
+      "claims_remitted",
+      "vat_remitted",
+      "commission_remitted",
+      "outstanding_premium",
+      "outstanding_claims",
+      "outstanding_vat",
+      "outstanding_commission",
+    ],
+    dates: ["sd", "ed", "date_remitted"],
+  },
 };
 
 const PERSONNEL_REQUIRED = {
@@ -94,6 +149,10 @@ export function validateReturn(code: string, rows: ReturnRow[]): ValidationResul
 
   if (code === "PERSONNEL") {
     validatePersonnel(rows, issues, () => totalChecks++, () => passedChecks++);
+    return summarize(issues, totalChecks, passedChecks);
+  }
+
+  if (!config) {
     return summarize(issues, totalChecks, passedChecks);
   }
 

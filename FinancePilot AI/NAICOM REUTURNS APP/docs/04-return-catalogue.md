@@ -11,6 +11,8 @@ Configurable catalogue (`return_definitions`). Admin can add/edit any return wit
 | PERSONNEL | Personnel Returns | — | Quarterly | HR | `staff` table | Generated |
 | FORM_1C | Form 1C | NAICOM Form 1C | Periodic (per directive) | Finance | `v_form_1c` | Generated |
 | BROKERAGE_COMMISSION | Returns - Insurance Brokerage Commission Register | — | **Annual** | Finance | `v_brokerage_commission` | Generated |
+| NEW_POLICIES | All New Policies | — | **Monthly** | Operations | `policies` | Generated |
+| RENEWAL_POLICIES | All Renewal Policies | — | **Monthly** | Operations | `policies` | Generated |
 | PREMIUM_COLLECTION | Premium Collection Report | — | Monthly | Finance | `v_premium_collections` | Report |
 | PREMIUM_REMITTANCE | Premium Remittance Report | — | Monthly | Finance | `v_premium_remittances` | Report |
 | COMMISSION_REPORT | Commission Report | — | Monthly | Finance | `v_commission_analysis` | Report |
@@ -65,6 +67,19 @@ Columns: S/N, Name of Client, Name of Insurer, Policy No., Class of Business, Da
 
 ### PPS
 - **RESOLVED** — see PPS section above (Form PPS-A, Monthly, generated from `v_income_production`).
+
+### NEW_POLICIES (Monthly) — All New Policies
+Monthly schedule of **all new policies** written during the period (one row per policy where `transaction_type = 'NEW'`). Can be generated for any month.
+
+Columns: S/N, Policy No., Trans. Ref., Transaction Date, Name of Client, Name of Insured, Name of Insurer, Class of Business, Risk Type, Sum Insured, Gross Premium, Premium Collected, Premium Paid to Insurer, Commission, Withholding Tax, Net Premium, **Premium Due Date**, Cover From, Cover To, **Renewal Due Date**, Premium Collection Date, Premium Payment Date, Receipt No., Bank of Lodgement, Currency, Branch Location, Remarks.
+
+- **Premium Due Date** (derived) = `cover_from` — the premium falls due at cover inception.
+- **Renewal Due Date** (derived) = `cover_to` — the expiry date that drives the next renewal.
+- Totals: Sum Insured, Gross Premium, Premium Collected, Premium Paid to Insurer, Commission, Withholding Tax, Net Premium.
+- Validation: required policy no./insured/insurer/gross premium; money and date checks incl. both due dates.
+
+### RENEWAL_POLICIES (Monthly) — All Renewal Policies
+Monthly schedule of **all renewed policies** during the period (one row per policy where `transaction_type = 'RENEWAL'`). Same columns, due-date derivations, totals and validation as NEW_POLICIES.
 
 ## Catalogue fields (per PRD §18)
 

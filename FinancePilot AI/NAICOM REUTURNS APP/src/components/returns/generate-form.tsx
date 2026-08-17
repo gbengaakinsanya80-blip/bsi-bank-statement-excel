@@ -21,7 +21,7 @@ export function GenerateForm({
 }) {
   const router = useRouter();
   const currentYear = new Date().getFullYear();
-  const years = periodYearOptions(currentYear);
+  const years = periodYearOptions();
   const [year, setYear] = useState(currentYear);
   const [periodKey, setPeriodKey] = useState(
     () => periodsForFrequency(frequency, currentYear)[0]?.key ?? ""

@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { PersonnelReturnTables, ReturnTable } from "@/components/returns/return-table";
 import { ReturnStatusActions } from "@/components/returns/status-actions";
+import { ClaimsFormCard } from "@/components/returns/claims-form-card";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { getReturnInstance } from "@/lib/returns/return-service";
 import { getDemoReturnView } from "@/lib/returns/demo-store";
@@ -159,6 +160,10 @@ export default async function ReturnDetailPage({
             </div>
           </CardContent>
         </Card>
+      )}
+
+      {instance.code === "CLAIMS_AWAITING" && (
+        <ClaimsFormCard />
       )}
 
       <Card>

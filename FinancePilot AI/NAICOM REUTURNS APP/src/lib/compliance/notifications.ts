@@ -2,6 +2,7 @@ import { promises as fs } from "fs";
 import os from "os";
 import path from "path";
 import type { CalendarItem } from "@/lib/compliance/calendar";
+import type { BoardMeeting } from "@/lib/board/types";
 
 export type NotificationType = "DEADLINE" | "VALIDATION" | "WORKFLOW" | "SYSTEM";
 
@@ -127,6 +128,84 @@ export function deriveDemoNotifications(
   }
 
   return notifications.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+}
+
+/** Board meeting reminders: upcoming meetings, outstanding minutes, overdue action points. */
+export function deriveBoardNotifications(meetings: BoardMeeting[]): AppNotification[] {
+  const notifications: AppNotification[] = [];
+  const now = new Date();
+  const today = now.toISOString().slice(0, 10);
+  const dayMs = 24 * 60 * 60 * 1000;
+
+  for (const m of meetings) {
+    const daysToMeeting = Math.round(
+      (new Date(`${m.meeting_date}T00:00:00`).getTime() - now.getTime()) / dayMs
+    );
+
+    if (daysToMeeting >= 0 && daysToMeeting <= 14) {
+      notifications.push({
+        id: `board:upcoming:${m.id}`,
+        type: "WORKFLOW",
+        title: `${m.meeting_number} is upcoming`,
+        body: `Scheduled ${m.meeting_date}. Prepare agenda and board papers in good time.`,
+        link: `/board/${m.id}`,
+        read: false,
+        createdAt: now.toISOString(),
+      });
+    }
+
+    if (daysToMeeting < 0 && (m.status === "DRAFT" || m.status === "REVIEW")) {
+      notifications.push({
+        id: `board:minutes:${m.id}`,
+        type: "WORKFLOW",
+        title: `${m.meeting_number} minutes outstanding`,
+        body: `Minutes are ${m.status === "REVIEW" ? "awaiting review" : "still in draft"}. Complete the approval workflow.`,
+        link: `/board/${m.id}`,
+        read: false,
+        createdAt: now.toISOString(),
+      });
+    }
+
+    if (m.status === "APPROVED") {
+      notifications.push({
+        id: `board:finalize:${m.id}`,
+        type: "WORKFLOW",
+        title: `${m.meeting_number} awaiting finalization`,
+        body: "Approved minutes should be finalized for the permanent record.",
+        link: `/board/${m.id}`,
+        read: false,
+        createdAt: now.toISOString(),
+      });
+    }
+
+    for (const a of m.action_points) {
+      if (a.status === "OPEN" || a.status === "IN_PROGRESS") {
+        if (a.due_date && a.due_date < today) {
+          notifications.push({
+            id: `board:action-overdue:${m.id}:${a.id}`,
+            type: "DEADLINE",
+            title: "Board action point overdue",
+            body: `"${a.action.slice(0, 80)}${a.action.length > 80 ? "…" : ""}" was due ${a.due_date}.`,
+            link: `/board/${m.id}`,
+            read: false,
+            createdAt: now.toISOString(),
+          });
+        } else if (!a.due_date || a.due_date === today) {
+          notifications.push({
+            id: `board:action-due:${m.id}:${a.id}`,
+            type: "DEADLINE",
+            title: "Board action point due",
+            body: `"${a.action.slice(0, 80)}${a.action.length > 80 ? "…" : ""}"${a.due_date ? ` is due ${a.due_date}` : " has no due date set"}.`,
+            link: `/board/${m.id}`,
+            read: false,
+            createdAt: now.toISOString(),
+          });
+        }
+      }
+    }
+  }
+
+  return notifications;
 }
 
 export async function getDemoReadNotificationIds(): Promise<string[]> {

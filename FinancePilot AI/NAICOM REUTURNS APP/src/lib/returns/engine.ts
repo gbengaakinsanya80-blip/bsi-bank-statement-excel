@@ -41,7 +41,7 @@ async function demoReturnData(): Promise<ReturnData> {
     reason_for_leaving: s.reason_for_leaving,
   }));
 
-  return { policies, staff };
+  return { policies, staff, claims: [] };
 }
 
 function toPolicySource(p: {
@@ -141,7 +141,7 @@ async function loadReturnData(supabase: DbClient, code: string): Promise<ReturnD
       date_of_exit: s.date_of_exit,
       reason_for_leaving: s.reason_for_leaving,
     }));
-    return { policies: [], staff };
+    return { policies: [], staff, claims: [] };
   }
 
   const { data, error } = await supabase
@@ -155,7 +155,7 @@ async function loadReturnData(supabase: DbClient, code: string): Promise<ReturnD
     .is("deleted_at", null)
     .eq("is_demo", false);
   if (error) throw new Error(error.message);
-  return { policies: (data ?? []).map(toPolicySource), staff: [] };
+  return { policies: (data ?? []).map(toPolicySource), staff: [], claims: [] };
 }
 
 async function ensureDefinitionId(supabase: DbClient, code: string): Promise<string> {

@@ -131,8 +131,8 @@ export function periodsForFrequency(frequency: ReturnFrequency, year: number): R
   }
 }
 
-export function periodYearOptions(currentYear: number): number[] {
+export function periodYearOptions(): number[] {
   const years: number[] = [];
-  for (let y = currentYear - 2; y <= currentYear + 1; y++) years.push(y);
+  for (let y = 2020; y <= 2030; y++) years.push(y);
   return years;
 }

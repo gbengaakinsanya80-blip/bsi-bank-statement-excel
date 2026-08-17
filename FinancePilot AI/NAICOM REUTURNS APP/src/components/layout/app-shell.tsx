@@ -19,6 +19,9 @@ import {
   Percent,
   SlidersHorizontal,
   FileSearch,
+  UsersRound,
+  ScrollText,
+  GraduationCap,
 } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 import { signOutAction } from "@/lib/auth/actions";
@@ -50,11 +53,19 @@ const NAV_GROUPS: { label: string | null; items: { href: string; label: string; 
     ],
   },
   {
+    label: "Governance",
+    items: [
+      { href: "/board", label: "Board Meetings", icon: UsersRound },
+      { href: "/audit", label: "Audit Trail", icon: ScrollText },
+    ],
+  },
+  {
     label: "Masters",
     items: [
       { href: "/clients", label: "Clients", icon: Building2 },
       { href: "/insurers", label: "Insurers", icon: ShieldCheck },
       { href: "/staff", label: "Staff", icon: Users },
+      { href: "/training", label: "Training", icon: GraduationCap },
     ],
   },
 ];

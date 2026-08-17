@@ -31,7 +31,7 @@ import { cn } from "@/lib/utils/cn";
 
 export const metadata: Metadata = { title: "Regulatory Calendar" };
 
-const YEAR_OPTIONS = [2025, 2026, 2027];
+const YEAR_OPTIONS = Array.from({ length: 2030 - 2020 + 1 }, (_, i) => 2020 + i);
 
 function parseDateParam(value: string | undefined): Date | null {
   if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;

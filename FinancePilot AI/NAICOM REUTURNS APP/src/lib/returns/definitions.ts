@@ -89,6 +89,72 @@ export const RETURN_DEFINITIONS: ReturnDefinition[] = [
     source: "v_brokerage_commission",
     requiresConfirmation: false,
   },
+  {
+    code: "NEW_POLICIES",
+    name: "All New Policies",
+    formNumber: null,
+    frequency: "MONTHLY",
+    department: "Operations",
+    description:
+      "Monthly schedule of all new policies written — policy details, premiums, commissions and premium/renewal due dates. Can be generated for any month.",
+    source: "policies",
+    requiresConfirmation: false,
+  },
+  {
+    code: "RENEWAL_POLICIES",
+    name: "All Renewal Policies",
+    formNumber: null,
+    frequency: "MONTHLY",
+    department: "Operations",
+    description:
+      "Monthly schedule of all renewed policies — policy details, premiums, commissions and premium/renewal due dates. Can be generated for any month.",
+    source: "policies",
+    requiresConfirmation: false,
+  },
+  {
+    code: "FORM_7_2B",
+    name: "Form 7.2B — Statement of Business Generated",
+    formNumber: "FORM 7.2B",
+    frequency: "HALF_YEARLY",
+    department: "Operations / Finance",
+    description:
+      "Half-yearly statement of business generated (Form 7.2B) — one row per policy showing gross/net premium split into premium paid directly to insurers vs paid to the broker (local/foreign), premium received by the broker and commission income earned vs deferred.",
+    source: "v_income_production",
+    requiresConfirmation: false,
+  },
+  {
+    code: "FORM_7_2C",
+    name: "Form 7.2C — Schedule of Remittances",
+    formNumber: "FORM 7.2C",
+    frequency: "HALF_YEARLY",
+    department: "Finance",
+    description:
+      "Half-yearly schedule of remittances (Form 7.2C) — one row per policy showing premium received, amounts due to each stakeholder (insurer, insured, FIRS/SIRS, co-brokers, reporting broker), amounts remitted and the outstanding balances.",
+    source: "v_income_production",
+    requiresConfirmation: false,
+  },
+  {
+    code: "CLAIMS_AWAITING",
+    name: "Schedule of Claims Awaiting Payment",
+    formNumber: null,
+    frequency: "QUARTERLY",
+    department: "Operations",
+    description:
+      "Quarterly schedule of claims awaiting payment — claim notification dates, insurer, claim number, amount, discharge voucher status and payment date.",
+    source: "policies",
+    requiresConfirmation: false,
+  },
+  {
+    code: "BIZ_SCHEDULE",
+    name: "Business Schedule and Premium Transmission",
+    formNumber: null,
+    frequency: "QUARTERLY",
+    department: "Operations / Finance",
+    description:
+      "Quarterly business schedule and premium transmission — policy details, premiums (local/foreign), premium receipt and transmission dates, commission (local/foreign).",
+    source: "policies",
+    requiresConfirmation: false,
+  },
 ];
 
 export function getReturnDefinition(code: string): ReturnDefinition {

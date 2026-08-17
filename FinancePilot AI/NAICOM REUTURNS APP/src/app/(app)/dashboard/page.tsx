@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ArrowUpRight, Building2, FileText, Landmark, ShieldCheck, Users } from "lucide-react";
+import { ArrowUpRight, Building2, CalendarDays, FileText, Landmark, ShieldCheck, Users, UsersRound } from "lucide-react";
 import {
   Card,
   CardContent,
@@ -12,6 +12,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { createServerSupabase } from "@/lib/supabase/server";
 import { getDashboardKpis, getRecentPolicies } from "@/lib/services/dashboard-service";
 import { demoKpis, demoRecentPolicies } from "@/lib/demo/data";
+import { listMeetings } from "@/lib/services/board-service";
+import { meetingTypeLabel } from "@/lib/board/types";
 import { formatDate, formatMoney, titleCase } from "@/lib/utils/format";
 
 export const metadata: Metadata = { title: "Dashboard" };
@@ -20,11 +22,12 @@ export default async function DashboardPage() {
   const supabase = await createServerSupabase();
   const demo = !supabase;
 
-  const [kpis, recent] = demo
-    ? [demoKpis, demoRecentPolicies]
+  const [kpis, recent, meetings] = demo
+    ? [demoKpis, demoRecentPolicies, await listMeetings(supabase)]
     : await Promise.all([
         getDashboardKpis(supabase),
         getRecentPolicies(supabase, 8),
+        listMeetings(supabase),
       ]);
 
   const cards = [
@@ -72,6 +75,16 @@ export default async function DashboardPage() {
     },
   ];
 
+  const today = new Date().toISOString().slice(0, 10);
+  const upcomingMeeting = meetings
+    .filter((m) => m.meeting_date >= today && m.status !== "CANCELLED")
+    .sort((a, b) => a.meeting_date.localeCompare(b.meeting_date))[0] ?? null;
+  const meetingsThisYear = meetings.filter((m) => m.financial_year === new Date().getUTCFullYear());
+  const finalizedThisYear = meetingsThisYear.filter((m) => m.status === "FINAL" || m.status === "APPROVED").length;
+  const outstandingActions = meetings.flatMap((m) =>
+    m.action_points.filter((a) => a.status === "OPEN" || a.status === "IN_PROGRESS")
+  ).length;
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -105,6 +118,55 @@ export default async function DashboardPage() {
             </CardContent>
           </Card>
         ))}
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Board meetings (this year)</CardTitle>
+            <UsersRound className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {finalizedThisYear}
+              <span className="text-sm font-normal text-muted-foreground"> / {meetingsThisYear.length} finalized</span>
+            </div>
+            <Link href="/board" className="mt-1 inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline">
+              Open register <ArrowUpRight className="h-3 w-3" />
+            </Link>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Outstanding action points</CardTitle>
+            <ShieldCheck className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{outstandingActions}</div>
+            <p className="text-xs text-muted-foreground">Open or in progress across meetings</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Next meeting</CardTitle>
+            <CalendarDays className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            {upcomingMeeting ? (
+              <>
+                <div className="text-lg font-bold">{upcomingMeeting.meeting_number}</div>
+                <p className="text-xs text-muted-foreground">
+                  {meetingTypeLabel(upcomingMeeting.meeting_type)} · {formatDate(upcomingMeeting.meeting_date)}
+                </p>
+                <Link href={`/board/${upcomingMeeting.id}`} className="mt-1 inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline">
+                  Open <ArrowUpRight className="h-3 w-3" />
+                </Link>
+              </>
+            ) : (
+              <p className="text-sm text-muted-foreground">No upcoming meetings scheduled.</p>
+            )}
+          </CardContent>
+        </Card>
       </div>
 
       <Card>

@@ -84,11 +84,15 @@ describe("calendar colour coding", () => {
 describe("buildCalendarYear", () => {
   it("enumerates every return × period for the year", () => {
     const items = buildCalendarYear(2026, {}, TODAY);
-    expect(items.length).toBe(37);
+    expect(items.length).toBe(75);
     const crrQ1 = items.find((i) => i.code === "CRR" && i.periodKey === "2026-Q1");
     expect(crrQ1?.dueDate).toBe("2026-04-21");
     expect(crrQ1?.color).toBe("RED");
     expect(items.find((i) => i.code === "FORM_1C")?.requiresConfirmation).toBe(true);
+    expect(items.filter((i) => i.code === "FORM_7_2B").length).toBe(3);
+    expect(items.filter((i) => i.code === "FORM_7_2C").length).toBe(3);
+    expect(items.filter((i) => i.code === "CLAIMS_AWAITING").length).toBe(4);
+    expect(items.filter((i) => i.code === "BIZ_SCHEDULE").length).toBe(4);
   });
 
   it("lists the annual brokerage commission register due next January", () => {

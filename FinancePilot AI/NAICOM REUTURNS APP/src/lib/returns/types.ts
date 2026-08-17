@@ -55,9 +55,23 @@ export interface StaffSource {
   reason_for_leaving: string | null;
 }
 
+export interface ClaimSource {
+  id: string;
+  date_notified_by_insured: string | null;
+  date_notified_to_insurer: string | null;
+  insurer_name: string | null;
+  claim_no: string | null;
+  claim_amount: number | null;
+  date_discharge_voucher: string | null;
+  insured_beneficiary: string | null;
+  date_payment: string | null;
+  remarks: string | null;
+}
+
 export interface ReturnData {
   policies: PolicySource[];
   staff: StaffSource[];
+  claims: ClaimSource[];
 }
 
 export type ReturnRow = Record<string, unknown>;
