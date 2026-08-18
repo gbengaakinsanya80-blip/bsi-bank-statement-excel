@@ -3,7 +3,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { isSupabaseConfigured, supabaseAnonKey, supabaseUrl } from "@/lib/config";
 import { DEMO_SESSION_COOKIE } from "@/lib/demo/data";
 
-const PROTECTED_PREFIXES = ["/dashboard", "/policies", "/returns", "/reports", "/import", "/clients", "/insurers", "/staff", "/admin"];
+const PROTECTED_PREFIXES = ["/dashboard", "/policies", "/returns", "/reports", "/import", "/clients", "/insurers", "/staff", "/admin", "/training", "/board", "/audit", "/search"];
 const AUTH_ROUTES = ["/login", "/signup", "/forgot-password"];
 
 export async function updateSession(request: NextRequest) {

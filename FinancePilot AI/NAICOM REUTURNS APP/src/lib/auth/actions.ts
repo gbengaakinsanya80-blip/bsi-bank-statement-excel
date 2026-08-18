@@ -91,9 +91,27 @@ export async function signUpAction(
   });
 
   if (error) return { error: error.message };
-  if (!data.session) {
-    return { message: "Account created. Check your email to confirm your sign-in." };
+
+  // If email confirmation is required, auto-confirm via service role
+  if (!data.session && data.user && !data.user.confirmed_at) {
+    const { createServiceClient } = await import("@/lib/supabase/service");
+    const serviceClient = createServiceClient();
+    if (serviceClient) {
+      await serviceClient.auth.admin.updateUserById(data.user.id, {
+        email_confirm: true,
+      });
+    }
+    // Now sign in
+    const { error: signInError } = await supabase.auth.signInWithPassword({
+      email: parsed.data.email,
+      password: parsed.data.password,
+    });
+    if (signInError) {
+      return { message: "Account created. You can now sign in." };
+    }
+    redirect("/dashboard");
   }
+
   redirect("/dashboard");
 }
 
