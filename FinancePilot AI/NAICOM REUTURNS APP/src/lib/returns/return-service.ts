@@ -45,46 +45,50 @@ function summaryFromRow(r: DbReturnRow, rowCount: number, versionNo: number): Re
 }
 
 export async function listReturnInstances(supabase: DbClient): Promise<ReturnInstanceSummary[]> {
-  const { data, error } = await supabase
-    .from("returns")
-    .select(
-      `id,
-       definition_id,
-       period_label,
-       period_start,
-       period_end,
-       status,
-       created_at,
-       return_definitions(name, code, form_number, frequency, responsible_department)`
-    )
-    .order("created_at", { ascending: false })
-    .limit(50);
-  if (error) throw new Error(error.message);
+  try {
+    const { data, error } = await supabase
+      .from("returns")
+      .select(
+        `id,
+         definition_id,
+         period_label,
+         period_start,
+         period_end,
+         status,
+         created_at,
+         return_definitions(name, code, form_number, frequency, responsible_department)`
+      )
+      .order("created_at", { ascending: false })
+      .limit(50);
+    if (error) throw error;
   const rows = (data ?? []) as unknown as DbReturnRow[];
 
-  const ids = rows.map((r) => r.id);
-  const counts = new Map<string, number>();
-  const maxVersions = new Map<string, number>();
-  if (ids.length > 0) {
-    const { data: lines } = await supabase
-      .from("return_line_items")
-      .select("return_id")
-      .in("return_id", ids);
-    for (const line of lines ?? []) {
-      counts.set(line.return_id, (counts.get(line.return_id) ?? 0) + 1);
+    const ids = rows.map((r) => r.id);
+    const counts = new Map<string, number>();
+    const maxVersions = new Map<string, number>();
+    if (ids.length > 0) {
+      const { data: lines } = await supabase
+        .from("return_line_items")
+        .select("return_id")
+        .in("return_id", ids);
+      for (const line of lines ?? []) {
+        counts.set(line.return_id, (counts.get(line.return_id) ?? 0) + 1);
+      }
+
+      const { data: versions } = await supabase
+        .from("return_versions")
+        .select("return_id, version_no")
+        .in("return_id", ids);
+      for (const v of versions ?? []) {
+        const current = maxVersions.get(v.return_id) ?? 0;
+        if (v.version_no > current) maxVersions.set(v.return_id, v.version_no);
+      }
     }
 
-    const { data: versions } = await supabase
-      .from("return_versions")
-      .select("return_id, version_no")
-      .in("return_id", ids);
-    for (const v of versions ?? []) {
-      const current = maxVersions.get(v.return_id) ?? 0;
-      if (v.version_no > current) maxVersions.set(v.return_id, v.version_no);
-    }
+    return rows.map((r) => summaryFromRow(r, counts.get(r.id) ?? 0, maxVersions.get(r.id) ?? 1));
+  } catch {
+    return [];
   }
-
-  return rows.map((r) => summaryFromRow(r, counts.get(r.id) ?? 0, maxVersions.get(r.id) ?? 1));
 }
 
 export async function getReturnInstance(

@@ -143,69 +143,83 @@ export default async function ReconciliationPage() {
     }));
     input = { returns, policies: await demoPolicySources() };
   } else {
-    const { data: returns } = await supabase
-      .from("returns")
-      .select(`id, period_start, period_end, period_label, status, return_definitions(code)`);
-    const { data: lines } = await supabase.from("return_line_items").select("return_id, row_data");
-    const rowsByReturn = new Map<string, Record<string, unknown>[]>();
-    for (const line of lines ?? []) {
-      const list = rowsByReturn.get(line.return_id) ?? [];
-      list.push((line.row_data as Record<string, unknown>) ?? {});
-      rowsByReturn.set(line.return_id, list);
+    try {
+      const { data: returns } = await supabase
+        .from("returns")
+        .select(`id, period_start, period_end, period_label, status, return_definitions(code)`);
+      const { data: lines } = await supabase.from("return_line_items").select("return_id, row_data");
+      const rowsByReturn = new Map<string, Record<string, unknown>[]>();
+      for (const line of lines ?? []) {
+        const list = rowsByReturn.get(line.return_id) ?? [];
+        list.push((line.row_data as Record<string, unknown>) ?? {});
+        rowsByReturn.set(line.return_id, list);
+      }
+      const returnsLike: ReconciliationReturnLike[] = (returns ?? []).map((r) => ({
+        id: r.id,
+        code: (r.return_definitions as unknown as { code?: string })?.code ?? "INCOME_PRODUCTION",
+        periodKey: `${r.period_start}_to_${r.period_end}`,
+        periodStart: r.period_start,
+        periodEnd: r.period_end,
+        status: r.status,
+        rows: rowsByReturn.get(r.id) ?? [],
+      }));
+      const { data: policyRows } = await supabase
+        .from("policies")
+        .select(
+          "id, policy_number, insured_name, transaction_date, gross_premium, brokerage_commission, commission_rate, premium_collected, premium_paid_to_insurer"
+        )
+        .is("deleted_at", null);
+      const policies: PolicySource[] = (policyRows ?? []).map((p) => ({
+        id: p.id,
+        transaction_reference: null,
+        policy_number: p.policy_number,
+        endorsement_number: null,
+        transaction_type: "NEW",
+        risk_type: null,
+        class_of_business: null,
+        insured_name: p.insured_name,
+        client_name: null,
+        insurer_name: null,
+        broker_or_agent: null,
+        ledger_account: null,
+        sum_insured: null,
+        currency: "NGN",
+        gross_premium: p.gross_premium ? Number(p.gross_premium) : null,
+        premium_collected: p.premium_collected ? Number(p.premium_collected) : null,
+        premium_paid_to_insurer: p.premium_paid_to_insurer ? Number(p.premium_paid_to_insurer) : null,
+        brokerage_commission: p.brokerage_commission ? Number(p.brokerage_commission) : null,
+        commission_rate: p.commission_rate ? Number(p.commission_rate) : null,
+        tax: null,
+        other_deductions: null,
+        net_premium: null,
+        amount_received: null,
+        receipt_number: null,
+        debit_note_number: null,
+        credit_note_number: null,
+        transaction_date: p.transaction_date,
+        cover_from: null,
+        cover_to: null,
+        premium_collection_date: null,
+        premium_payment_date: null,
+        branch_location: null,
+        remarks: null,
+        bank_name: null,
+        cheque_number: null,
+      }));
+      input = { returns: returnsLike, policies };
+    } catch {
+      const demoReturns = await listDemoReturns();
+      const returns: ReconciliationReturnLike[] = demoReturns.map((r) => ({
+        id: r.id,
+        code: r.code,
+        periodKey: r.period.key,
+        periodStart: r.period.start,
+        periodEnd: r.period.end,
+        status: r.status,
+        rows: r.rows,
+      }));
+      input = { returns, policies: await demoPolicySources() };
     }
-    const returnsLike: ReconciliationReturnLike[] = (returns ?? []).map((r) => ({
-      id: r.id,
-      code: (r.return_definitions as unknown as { code?: string })?.code ?? "INCOME_PRODUCTION",
-      periodKey: `${r.period_start}_to_${r.period_end}`,
-      periodStart: r.period_start,
-      periodEnd: r.period_end,
-      status: r.status,
-      rows: rowsByReturn.get(r.id) ?? [],
-    }));
-    const { data: policyRows } = await supabase
-      .from("policies")
-      .select(
-        "id, policy_number, insured_name, transaction_date, gross_premium, brokerage_commission, commission_rate, premium_collected, premium_paid_to_insurer"
-      )
-      .is("deleted_at", null);
-    const policies: PolicySource[] = (policyRows ?? []).map((p) => ({
-      id: p.id,
-      transaction_reference: null,
-      policy_number: p.policy_number,
-      endorsement_number: null,
-      transaction_type: "NEW",
-      risk_type: null,
-      class_of_business: null,
-      insured_name: p.insured_name,
-      client_name: null,
-      insurer_name: null,
-      broker_or_agent: null,
-      ledger_account: null,
-      sum_insured: null,
-      currency: "NGN",
-      gross_premium: p.gross_premium ? Number(p.gross_premium) : null,
-      premium_collected: p.premium_collected ? Number(p.premium_collected) : null,
-      premium_paid_to_insurer: p.premium_paid_to_insurer ? Number(p.premium_paid_to_insurer) : null,
-      brokerage_commission: p.brokerage_commission ? Number(p.brokerage_commission) : null,
-      commission_rate: p.commission_rate ? Number(p.commission_rate) : null,
-      tax: null,
-      other_deductions: null,
-      net_premium: null,
-      amount_received: null,
-      receipt_number: null,
-      debit_note_number: null,
-      credit_note_number: null,
-      transaction_date: p.transaction_date,
-      cover_from: null,
-      cover_to: null,
-      premium_collection_date: null,
-      premium_payment_date: null,
-      branch_location: null,
-      remarks: null,
-      bank_name: null,
-      cheque_number: null,
-    }));
-    input = { returns: returnsLike, policies };
   }
 
   const results = runReconciliation(input);

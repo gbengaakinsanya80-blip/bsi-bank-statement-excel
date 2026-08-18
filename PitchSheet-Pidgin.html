@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bank Statement Intelligence — Pitch for Pidgin</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+    background: #fdf6ec;
+    color: #2b2117;
+    padding: 20px;
+    line-height: 1.55;
+  }
+  .page { max-width: 880px; margin: 0 auto; }
+  .header {
+    background: linear-gradient(135deg, #7c2d12, #c2410c);
+    color: #fff;
+    border-radius: 18px;
+    padding: 26px 28px;
+    margin-bottom: 18px;
+  }
+  .header h1 { font-size: 28px; margin-bottom: 6px; }
+  .header p { font-size: 16px; opacity: 0.92; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .card {
+    background: #fff;
+    border: 1px solid #f0e2d2;
+    border-radius: 14px;
+    padding: 16px 18px;
+    box-shadow: 0 1px 3px rgba(124,45,18,0.08);
+  }
+  .card h2 {
+    font-size: 15px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #c2410c;
+    margin-bottom: 10px;
+    padding-bottom: 8px;
+    border-bottom: 2px solid #f0e2d2;
+  }
+  .card.full { grid-column: 1 / -1; }
+  .quote {
+    display: block;
+    background: #fff7ed;
+    border-left: 3px solid #ea580c;
+    padding: 6px 10px;
+    border-radius: 0 8px 8px 0;
+    font-size: 14px;
+    margin-bottom: 10px;
+    font-style: italic;
+  }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th, td { text-align: left; padding: 7px 9px; border-bottom: 1px solid #f3e6d7; vertical-align: top; }
+  th { color: #c2410c; font-size: 13px; text-transform: uppercase; }
+  ul { padding-left: 18px; font-size: 14px; }
+  li { margin-bottom: 5px; }
+  .print-btn {
+    display: block; margin: 18px auto 0;
+    background: #c2410c; color: #fff;
+    border: none; border-radius: 30px;
+    font-family: inherit; font-size: 17px;
+    padding: 11px 28px; cursor: pointer;
+  }
+  @media (max-width: 720px) { .grid { grid-template-columns: 1fr; } }
+  @media print {
+    body { background: #fff; padding: 0; }
+    .print-btn { display: none; }
+    .card { box-shadow: none; page-break-inside: avoid; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="header">
+    <h1>Bank Statement Intelligence (BSI)</h1>
+    <p>Wetin one clerk dey do for one hour, dis app dey do with drag-and-drop.</p>
+    <p>E dey read bank statement PDF (both normal text and printed/scanned), turn am to clean Excel, check all the money well-well.</p>
+  </div>
+
+  <div class="grid">
+
+    <div class="card">
+      <h2>How you go open am (2 minutes)</h2>
+      <span class="quote">"Dis app dey read bank statement and turn am to clean Excel for few seconds. Normally na 30–60 minutes of typing by hand. Here — drag am, drop am, done."</span>
+      <span class="quote">"E dey work for text AND scanned statement. E dey know 17 Nigerian bank layouts by itself. And e dey check every number."</span>
+      <p style="font-size:14px">Stop there. Make dem talk first before you continue.</p>
+    </div>
+
+    <div class="card">
+      <h2>Live demo — 5 steps</h2>
+      <ul>
+        <li><b>1. Show the empty page.</b> "Na so easy."</li>
+        <li><b>2. Drop the statement.</b> "E go know say na Access Bank by itself."</li>
+        <li><b>3. Show the table.</b> "42 transactions, every balance checked — math dey correct."</li>
+        <li><b>4. Scroll + categories.</b> "E even dey tag wetin every money dey for."</li>
+        <li><b>5. Export → Excel.</b> "Here na your file wey don ready."</li>
+      </ul>
+      <p style="font-size:14px">Finish with the truth story: "If e no fit read one line well, e go tell you — e no dey hide am."</p>
+    </div>
+
+    <div class="card full">
+      <h2>Pitch according to person</h2>
+      <table>
+        <tr><th>Person</th><th>Wetin to talk</th><th>Line wey you go use</th></tr>
+        <tr><td>Loan person / fintech</td><td>Speed, accuracy</td><td>"You go check 50 people statement for one day, not 5."</td></tr>
+        <tr><td>Accountant</td><td>Clean export</td><td>"Your Excel go dey ready — no need to re-type."</td></tr>
+        <tr><td>Student / ordinary person</td><td>Free, simple</td><td>"E like say you get bank clerk for your pocket."</td></tr>
+        <tr><td>Bank / big company</td><td>Security, own server</td><td>"E fit run inside your own network — statement no go leave your side."</td></tr>
+      </table>
+    </div>
+
+    <div class="card">
+      <h2>Wetin you MUST do</h2>
+      <ul>
+        <li>Try the demo before you meet dem. Keep screenshot as backup.</li>
+        <li>Small pause when table show — make dem see am before you talk.</li>
+        <li>Use the bank dem dey use (Kuda, GTBank, etc.).</li>
+        <li>Mention the limit before dem reach am (big scanned file dey slow).</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h2>Wetin you MUST NOT do</h2>
+      <ul>
+        <li>No overload dem with features — one hook, five steps.</li>
+        <li>No big English: no "RapidOCR", no "hybrid extraction".</li>
+        <li>No say 100% — say "anything wey e no sure, e go tell you."</li>
+        <li>No stand there quiet when e dey work — keep dey talk.</li>
+      </ul>
+    </div>
+
+  </div>
+
+  <button class="print-btn" onclick="window.print()">🖨️ Print / save as PDF</button>
+</div>
+</body>
+</html>

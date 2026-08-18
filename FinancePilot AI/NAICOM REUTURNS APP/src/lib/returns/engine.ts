@@ -120,42 +120,46 @@ function toPolicySource(p: {
 }
 
 async function loadReturnData(supabase: DbClient, code: string): Promise<ReturnData> {
-  if (code === "PERSONNEL") {
+  try {
+    if (code === "PERSONNEL") {
+      const { data, error } = await supabase
+        .from("staff")
+        .select("*, staff_categories(name)")
+        .is("deleted_at", null)
+        .eq("is_demo", false);
+      if (error) throw error;
+      const staff: StaffSource[] = (data ?? []).map((s) => ({
+        id: s.id,
+        staff_name: s.staff_name,
+        staff_category: s.staff_categories?.name ?? null,
+        designation: s.designation,
+        gender: s.gender,
+        educational_qualification: s.educational_qualification,
+        professional_qualification: s.professional_qualification,
+        date_of_employment: s.date_of_employment,
+        state_of_origin: s.state_of_origin,
+        location: s.location,
+        date_of_exit: s.date_of_exit,
+        reason_for_leaving: s.reason_for_leaving,
+      }));
+      return { policies: [], staff, claims: [] };
+    }
+
     const { data, error } = await supabase
-      .from("staff")
-      .select("*, staff_categories(name)")
+      .from("policies")
+      .select(
+        `*,
+        clients(client_name),
+        insurers(insurer_name),
+        policy_collections(bank_name, cheque_number)`
+      )
       .is("deleted_at", null)
       .eq("is_demo", false);
-    if (error) throw new Error(error.message);
-    const staff: StaffSource[] = (data ?? []).map((s) => ({
-      id: s.id,
-      staff_name: s.staff_name,
-      staff_category: s.staff_categories?.name ?? null,
-      designation: s.designation,
-      gender: s.gender,
-      educational_qualification: s.educational_qualification,
-      professional_qualification: s.professional_qualification,
-      date_of_employment: s.date_of_employment,
-      state_of_origin: s.state_of_origin,
-      location: s.location,
-      date_of_exit: s.date_of_exit,
-      reason_for_leaving: s.reason_for_leaving,
-    }));
-    return { policies: [], staff, claims: [] };
+    if (error) throw error;
+    return { policies: (data ?? []).map(toPolicySource), staff: [], claims: [] };
+  } catch {
+    return { policies: [], staff: [], claims: [] };
   }
-
-  const { data, error } = await supabase
-    .from("policies")
-    .select(
-      `*,
-      clients(client_name),
-      insurers(insurer_name),
-      policy_collections(bank_name, cheque_number)`
-    )
-    .is("deleted_at", null)
-    .eq("is_demo", false);
-  if (error) throw new Error(error.message);
-  return { policies: (data ?? []).map(toPolicySource), staff: [], claims: [] };
 }
 
 async function ensureDefinitionId(supabase: DbClient, code: string): Promise<string> {

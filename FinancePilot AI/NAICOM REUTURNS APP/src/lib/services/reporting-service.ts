@@ -82,49 +82,53 @@ export async function fetchReportRows(supabase: DbClient | null): Promise<Report
     }));
   }
 
-  const { data, error } = await supabase
-    .from("policies")
-    .select(
-      `id,
-      policy_number,
-      insured_name,
-      risk_type,
-      class_of_business,
-      currency,
-      transaction_date,
-      gross_premium,
-      premium_collected,
-      premium_paid_to_insurer,
-      brokerage_commission,
-      clients(client_name),
-      insurers(insurer_name)`
-    )
-    .is("deleted_at", null)
-    .eq("is_demo", false);
+  try {
+    const { data, error } = await supabase
+      .from("policies")
+      .select(
+        `id,
+        policy_number,
+        insured_name,
+        risk_type,
+        class_of_business,
+        currency,
+        transaction_date,
+        gross_premium,
+        premium_collected,
+        premium_paid_to_insurer,
+        brokerage_commission,
+        clients(client_name),
+        insurers(insurer_name)`
+      )
+      .is("deleted_at", null)
+      .eq("is_demo", false);
 
-  if (error) throw new Error(error.message);
+    if (error) throw error;
 
-  return ((data ?? []) as unknown[]).map((row) => {
-    const r = row as Record<string, unknown> & {
-      clients?: { client_name: string } | null;
-      insurers?: { insurer_name: string } | null;
-    };
-    return {
-      id: String(r.id),
-      policy_number: r.policy_number as string | null,
-      insured_name: r.insured_name as string | null,
-      client_name: r.clients?.client_name ?? null,
-      insurer_name: r.insurers?.insurer_name ?? null,
-      risk_type: (r.risk_type as string | null) ?? (r.class_of_business as string | null),
-      class_of_business: r.class_of_business as string | null,
-      currency: String(r.currency ?? "NGN"),
-      transaction_date: r.transaction_date as string | null,
-      gross_premium: num(r.gross_premium as string | number | null),
-      premium_collected: num(r.premium_collected as string | number | null),
-      premium_paid_to_insurer: num(r.premium_paid_to_insurer as string | number | null),
-      brokerage_commission: num(r.brokerage_commission as string | number | null),
-    };
-  });
+    return ((data ?? []) as unknown[]).map((row) => {
+      const r = row as Record<string, unknown> & {
+        clients?: { client_name: string } | null;
+        insurers?: { insurer_name: string } | null;
+      };
+      return {
+        id: String(r.id),
+        policy_number: r.policy_number as string | null,
+        insured_name: r.insured_name as string | null,
+        client_name: r.clients?.client_name ?? null,
+        insurer_name: r.insurers?.insurer_name ?? null,
+        risk_type: (r.risk_type as string | null) ?? (r.class_of_business as string | null),
+        class_of_business: r.class_of_business as string | null,
+        currency: String(r.currency ?? "NGN"),
+        transaction_date: r.transaction_date as string | null,
+        gross_premium: num(r.gross_premium as string | number | null),
+        premium_collected: num(r.premium_collected as string | number | null),
+        premium_paid_to_insurer: num(r.premium_paid_to_insurer as string | number | null),
+        brokerage_commission: num(r.brokerage_commission as string | number | null),
+      };
+    });
+  } catch {
+    return [];
+  }
 }
 
 export function applyReportFilters(rows: ReportRow[], filters: ReportFilters): ReportRow[] {

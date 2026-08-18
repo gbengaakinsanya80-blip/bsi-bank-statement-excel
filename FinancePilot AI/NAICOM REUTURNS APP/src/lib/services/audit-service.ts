@@ -55,11 +55,15 @@ export async function listAudit(
 ): Promise<AuditLog[]> {
   if (!supabase) return listDemoAudit(limit);
 
-  const { data, error } = await supabase
-    .from("audit_logs")
-    .select("*")
-    .order("created_at", { ascending: false })
-    .limit(limit);
-  if (error) throw new Error(error.message);
-  return (data ?? []) as AuditLog[];
+  try {
+    const { data, error } = await supabase
+      .from("audit_logs")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .limit(limit);
+    if (error) throw error;
+    return (data ?? []) as AuditLog[];
+  } catch {
+    return [];
+  }
 }

@@ -13,16 +13,20 @@ export const insurerSchema = z.object({
 
 export type InsurerInput = z.output<typeof insurerSchema>;
 
-export async function listInsurers(supabase: DbClient) {
-  const { data, error } = await supabase
-    .from("insurers")
-    .select("*")
-    .is("deleted_at", null)
-    .eq("is_demo", false)
-    .eq("active", true)
-    .order("insurer_name");
-  if (error) throw new Error(error.message);
-  return data as Insurer[];
+export async function listInsurers(supabase: DbClient): Promise<Insurer[]> {
+  try {
+    const { data, error } = await supabase
+      .from("insurers")
+      .select("*")
+      .is("deleted_at", null)
+      .eq("is_demo", false)
+      .eq("active", true)
+      .order("insurer_name");
+    if (error) throw error;
+    return (data ?? []) as Insurer[];
+  } catch {
+    return [];
+  }
 }
 
 export async function createInsurer(supabase: DbClient, input: InsurerInput) {

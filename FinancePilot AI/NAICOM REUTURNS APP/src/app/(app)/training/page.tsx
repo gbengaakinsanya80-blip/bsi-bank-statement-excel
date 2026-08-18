@@ -22,12 +22,16 @@ const STATUS_BADGE: Record<string, string> = {
 async function listRecords() {
   const supabase = await createServerSupabase();
   if (supabase) {
-    const { data } = await supabase
-      .from("training_records")
-      .select("*")
-      .is("deleted_at", null)
-      .order("training_date", { ascending: false });
-    return data ?? [];
+    try {
+      const { data } = await supabase
+        .from("training_records")
+        .select("*")
+        .is("deleted_at", null)
+        .order("training_date", { ascending: false });
+      return data ?? [];
+    } catch {
+      return [];
+    }
   }
   return listDemoTrainingRecords();
 }

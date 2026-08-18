@@ -76,21 +76,25 @@ export function toPolicyRow(input: PolicyOutput, userId: string) {
   return row;
 }
 
-export async function listPolicies(supabase: DbClient, limit = 100) {
-  const { data, error } = await supabase
-    .from("policies")
-    .select(
-      `*,
-      clients(client_name),
-      insurers(insurer_name)`
-    )
-    .is("deleted_at", null)
-    .eq("is_demo", false)
-    .order("created_at", { ascending: false })
-    .limit(limit);
+export async function listPolicies(supabase: DbClient, limit = 100): Promise<(Policy & { clients: { client_name: string } | null; insurers: { insurer_name: string } | null })[]> {
+  try {
+    const { data, error } = await supabase
+      .from("policies")
+      .select(
+        `*,
+        clients(client_name),
+        insurers(insurer_name)`
+      )
+      .is("deleted_at", null)
+      .eq("is_demo", false)
+      .order("created_at", { ascending: false })
+      .limit(limit);
 
-  if (error) throw new Error(error.message);
-  return data as (Policy & { clients: { client_name: string } | null; insurers: { insurer_name: string } | null })[];
+    if (error) throw error;
+    return (data ?? []) as (Policy & { clients: { client_name: string } | null; insurers: { insurer_name: string } | null })[];
+  } catch {
+    return [];
+  }
 }
 
 export async function getPolicy(supabase: DbClient, id: string) {

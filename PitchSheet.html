@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bank Statement Intelligence — One-Page Pitch</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+    background: #f4f6fb;
+    color: #1f2430;
+    padding: 20px;
+    line-height: 1.5;
+  }
+  .page { max-width: 880px; margin: 0 auto; }
+  .header {
+    background: linear-gradient(135deg, #0f172a, #1e3a8a);
+    color: #fff;
+    border-radius: 18px;
+    padding: 26px 28px;
+    margin-bottom: 18px;
+  }
+  .header h1 { font-size: 30px; margin-bottom: 6px; }
+  .header p { font-size: 16px; opacity: 0.9; }
+  .tagline { font-style: italic; color: #93c5fd; margin-top: 4px; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .card {
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 14px;
+    padding: 16px 18px;
+    box-shadow: 0 1px 3px rgba(15,23,42,0.06);
+  }
+  .card h2 {
+    font-size: 15px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #1e3a8a;
+    margin-bottom: 10px;
+    padding-bottom: 8px;
+    border-bottom: 2px solid #e2e8f0;
+  }
+  .card.full { grid-column: 1 / -1; }
+  .script-line { margin-bottom: 10px; }
+  .script-line .step { font-weight: 600; color: #1e3a8a; }
+  .script-line .quote {
+    display: block;
+    background: #f8fafc;
+    border-left: 3px solid #3b82f6;
+    padding: 6px 10px;
+    border-radius: 0 8px 8px 0;
+    font-size: 14px;
+  }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th, td { text-align: left; padding: 7px 9px; border-bottom: 1px solid #eef2f7; vertical-align: top; }
+  th { color: #1e3a8a; font-size: 13px; text-transform: uppercase; }
+  ul { padding-left: 18px; font-size: 14px; }
+  li { margin-bottom: 5px; }
+  .tip { font-size: 14px; }
+  .print-btn {
+    display: block; margin: 18px auto 0;
+    background: #1e3a8a; color: #fff;
+    border: none; border-radius: 30px;
+    font-family: inherit; font-size: 17px;
+    padding: 11px 28px; cursor: pointer;
+  }
+  @media (max-width: 720px) { .grid { grid-template-columns: 1fr; } }
+  @media print {
+    body { background: #fff; padding: 0; }
+    .print-btn { display: none; }
+    .card { box-shadow: none; page-break-inside: avoid; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="header">
+    <h1>Bank Statement Intelligence (BSI)</h1>
+    <p>AI bank statement → Excel converter · text + scanned PDFs · 17 Nigerian bank layouts · balance-checked</p>
+    <p class="tagline">"What takes a clerk an hour now takes drag-and-drop."</p>
+  </div>
+
+  <div class="grid">
+
+    <div class="card">
+      <h2>The 2-minute opening</h2>
+      <div class="script-line">
+        <span class="step">Hook:</span>
+        <span class="quote">"This reads a bank statement PDF and turns it into a clean, validated Excel file in seconds. Normally that's 30–60 minutes of manual typing. Here it's drag, drop, done."</span>
+      </div>
+      <div class="script-line">
+        <span class="step">Reach:</span>
+        <span class="quote">"It handles text AND scanned statements, recognizes 17 Nigerian bank layouts automatically, and double-checks every number."</span>
+      </div>
+      <p class="tip">Stop here. Let them react before continuing to the demo.</p>
+    </div>
+
+    <div class="card">
+      <h2>Live demo — 5 moves</h2>
+      <ul>
+        <li><b>1. Show the empty dashboard.</b> "This is all it takes."</li>
+        <li><b>2. Drop in a statement.</b> "It'll figure out this is Access Bank on its own."</li>
+        <li><b>3. Reveal the table.</b> "42 transactions, every balance checked — the math adds up."</li>
+        <li><b>4. Scroll + categories.</b> "It even tags what each payment was for."</li>
+        <li><b>5. Export → Excel.</b> "Here's the finished file, ready for your loan officer."</li>
+      </ul>
+      <p class="tip">Close with the honesty story: "If a line can't be read perfectly, it flags it — it never quietly skips it."</p>
+    </div>
+
+    <div class="card full">
+      <h2>Pitch by audience</h2>
+      <table>
+        <tr><th>Audience</th><th>Emphasize</th><th>Line to use</th></tr>
+        <tr><td>Loan officer / fintech</td><td>Speed, accuracy, flagging</td><td>"Verify 50 applicants' statements a day instead of 5."</td></tr>
+        <tr><td>Accountant / auditor</td><td>Clean exports, reconciliation</td><td>"Your Excel output is validation-ready — no re-typing."</td></tr>
+        <tr><td>Student / personal</td><td>Free tier, simplicity</td><td>"A bank clerk in your pocket."</td></tr>
+        <tr><td>Bank / large company</td><td>Security, self-hosting</td><td>"It can run on your own servers — statements never leave your network."</td></tr>
+      </table>
+    </div>
+
+    <div class="card">
+      <h2>Do</h2>
+      <ul>
+        <li>Run the demo before presenting; keep a screenshot as backup.</li>
+        <li>Pause when the table appears — let them see it before you speak.</li>
+        <li>Demo the bank <i>they</i> use (Kuda, GTBank, etc.).</li>
+        <li>Mention limits before they hit them (large OCR scans are slow).</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h2>Don't</h2>
+      <ul>
+        <li>Don't overload with features — one hook, five steps.</li>
+        <li>No jargon: no "RapidOCR", "hybrid extraction", "layout detection".</li>
+        <li>Never claim 100% — say "anything uncertain is flagged."</li>
+        <li>Don't stand silent while it processes — narrate.</li>
+      </ul>
+    </div>
+
+  </div>
+
+  <button class="print-btn" onclick="window.print()">🖨️ Print / save as PDF</button>
+</div>
+</body>
+</html>

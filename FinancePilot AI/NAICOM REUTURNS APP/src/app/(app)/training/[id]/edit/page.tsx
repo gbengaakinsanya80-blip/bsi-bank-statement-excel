@@ -9,13 +9,17 @@ export const metadata: Metadata = { title: "Edit Training Record" };
 async function getRecord(id: string) {
   const supabase = await createServerSupabase();
   if (supabase) {
-    const { data } = await supabase
-      .from("training_records")
-      .select("*")
-      .eq("id", id)
-      .is("deleted_at", null)
-      .single();
-    return data;
+    try {
+      const { data } = await supabase
+        .from("training_records")
+        .select("*")
+        .eq("id", id)
+        .is("deleted_at", null)
+        .single();
+      return data;
+    } catch {
+      return null;
+    }
   }
   return getDemoTrainingRecord(id);
 }

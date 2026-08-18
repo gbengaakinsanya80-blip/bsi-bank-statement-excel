@@ -14,15 +14,19 @@ export const clientSchema = z.object({
 
 export type ClientInput = z.output<typeof clientSchema>;
 
-export async function listClients(supabase: DbClient) {
-  const { data, error } = await supabase
-    .from("clients")
-    .select("*")
-    .is("deleted_at", null)
-    .eq("is_demo", false)
-    .order("client_name");
-  if (error) throw new Error(error.message);
-  return data as Client[];
+export async function listClients(supabase: DbClient): Promise<Client[]> {
+  try {
+    const { data, error } = await supabase
+      .from("clients")
+      .select("*")
+      .is("deleted_at", null)
+      .eq("is_demo", false)
+      .order("client_name");
+    if (error) throw error;
+    return (data ?? []) as Client[];
+  } catch {
+    return [];
+  }
 }
 
 export async function createClient(supabase: DbClient, input: ClientInput) {

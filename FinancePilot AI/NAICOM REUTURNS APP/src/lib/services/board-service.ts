@@ -100,14 +100,18 @@ export async function getMeeting(
   if (!supabase) {
     return getDemoMeeting(id);
   }
-  const { data, error } = await supabase
-    .from("board_meetings")
-    .select("*")
-    .eq("id", id)
-    .is("deleted_at", null)
-    .maybeSingle();
-  if (error) throw new Error(error.message);
-  return data ? fromRow(data) : null;
+  try {
+    const { data, error } = await supabase
+      .from("board_meetings")
+      .select("*")
+      .eq("id", id)
+      .is("deleted_at", null)
+      .maybeSingle();
+    if (error) throw error;
+    return data ? fromRow(data) : null;
+  } catch {
+    return null;
+  }
 }
 
 export async function listMeetings(
@@ -116,13 +120,17 @@ export async function listMeetings(
   if (!supabase) {
     return listDemoMeetings();
   }
-  const { data, error } = await supabase
-    .from("board_meetings")
-    .select("*")
-    .is("deleted_at", null)
-    .order("meeting_date", { ascending: false });
-  if (error) throw new Error(error.message);
-  return (data ?? []).map(fromRow);
+  try {
+    const { data, error } = await supabase
+      .from("board_meetings")
+      .select("*")
+      .is("deleted_at", null)
+      .order("meeting_date", { ascending: false });
+    if (error) throw error;
+    return (data ?? []).map(fromRow);
+  } catch {
+    return [];
+  }
 }
 
 // ------------------------------------------------------------------

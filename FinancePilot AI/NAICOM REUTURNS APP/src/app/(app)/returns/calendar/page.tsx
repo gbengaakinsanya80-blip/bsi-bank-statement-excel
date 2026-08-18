@@ -70,35 +70,39 @@ export default async function CalendarPage({
     }
     items = buildCalendarYear(year, existing, today);
   } else {
-    const { data: definitions } = await supabase
-      .from("return_definitions")
-      .select("id, code, name, frequency")
-      .eq("active", true);
-    const { data: rules } = await supabase.from("due_date_rules").select("definition_id, rule");
-    const { data: returns } = await supabase
-      .from("returns")
-      .select("id, definition_id, period_start, period_end, status");
+    try {
+      const { data: definitions } = await supabase
+        .from("return_definitions")
+        .select("id, code, name, frequency")
+        .eq("active", true);
+      const { data: rules } = await supabase.from("due_date_rules").select("definition_id, rule");
+      const { data: returns } = await supabase
+        .from("returns")
+        .select("id, definition_id, period_start, period_end, status");
 
-    const defs = (definitions ?? []).map((d) => ({
-      code: d.code,
-      name: d.name,
-      frequency: d.frequency as CalendarItem["frequency"],
-    }));
+      const defs = (definitions ?? []).map((d) => ({
+        code: d.code,
+        name: d.name,
+        frequency: d.frequency as CalendarItem["frequency"],
+      }));
 
-    const defIdToCode = new Map((definitions ?? []).map((d) => [d.id, d.code]));
-    const rulesByCode: Record<string, DueDateRule> = {};
-    for (const r of rules ?? []) {
-      const code = defIdToCode.get(r.definition_id);
-      if (code) rulesByCode[code] = r.rule as DueDateRule;
+      const defIdToCode = new Map((definitions ?? []).map((d) => [d.id, d.code]));
+      const rulesByCode: Record<string, DueDateRule> = {};
+      for (const r of rules ?? []) {
+        const code = defIdToCode.get(r.definition_id);
+        if (code) rulesByCode[code] = r.rule as DueDateRule;
+      }
+
+      const existing: Record<string, { id: string; status: string }> = {};
+      for (const r of returns ?? []) {
+        const code = defIdToCode.get(r.definition_id);
+        if (code) existing[`${code}|${r.period_start}|${r.period_end}`] = { id: r.id, status: r.status };
+      }
+
+      items = buildCalendar(defs, year, existing, today, rulesByCode);
+    } catch {
+      items = buildCalendarYear(year, {}, today);
     }
-
-    const existing: Record<string, { id: string; status: string }> = {};
-    for (const r of returns ?? []) {
-      const code = defIdToCode.get(r.definition_id);
-      if (code) existing[`${code}|${r.period_start}|${r.period_end}`] = { id: r.id, status: r.status };
-    }
-
-    items = buildCalendar(defs, year, existing, today, rulesByCode);
   }
 
   const counts: Record<CalendarColor, number> = { RED: 0, ORANGE: 0, YELLOW: 0, GREEN: 0, GREY: 0 };
