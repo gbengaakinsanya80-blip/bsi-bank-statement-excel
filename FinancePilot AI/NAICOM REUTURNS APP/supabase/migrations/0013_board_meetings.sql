@@ -7,7 +7,6 @@
 -- owned by their meeting). Links to reporting periods via
 -- period_start / period_end so a meeting can be matched to the
 -- same quarter as the NAICOM returns.
--- audit_logs: generic application audit trail.
 -- ============================================================
 
 create table public.board_meetings (
@@ -44,29 +43,10 @@ create index on public.board_meetings (financial_year, quarter);
 create index on public.board_meetings (meeting_date);
 create index on public.board_meetings (status);
 
-create table public.audit_logs (
-  id            bigint generated always as identity primary key,
-  user_id       uuid references public.users (id),
-  action        text not null,
-  module        text not null,
-  record_id     text,
-  old_value     jsonb,
-  new_value     jsonb,
-  ip_address    text,
-  device        text,
-  created_at    timestamptz not null default now()
-);
-create index on public.audit_logs (module, created_at desc);
-create index on public.audit_logs (user_id);
-
 -- RLS -----------------------------------------------------------
 alter table public.board_meetings enable row level security;
 create policy "board_read_auth"   on public.board_meetings for select to authenticated using (deleted_at is null);
 create policy "board_write_auth"  on public.board_meetings for all to authenticated using (public.app_user_role() in ('SUPER_ADMIN','ADMIN','REVIEWER')) with check (public.app_user_role() in ('SUPER_ADMIN','ADMIN','REVIEWER'));
-
-alter table public.audit_logs enable row level security;
-create policy "audit_read_auth"   on public.audit_logs for select to authenticated using (true);
-create policy "audit_write_auth"  on public.audit_logs for insert to authenticated with check (true);
 
 -- Triggers ------------------------------------------------------
 drop trigger if exists touch_board_meetings_updated_at on public.board_meetings;
