@@ -38,28 +38,34 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const { data: appUser } = await supabase
-    .from("users")
-    .select("*")
-    .eq("id", user.id)
-    .single();
+  let appUser: Record<string, unknown> | null = null;
+  try {
+    const result = await supabase
+      .from("users")
+      .select("*")
+      .eq("id", user.id)
+      .single();
+    appUser = result.data;
+  } catch { /* table may not exist yet */ }
 
-  const { data: userNotifications } = await supabase
-    .from("user_notifications")
-    .select("id, type, title, body, link, read, created_at")
-    .eq("user_id", user.id)
-    .order("created_at", { ascending: false })
-    .limit(20);
-
-  const notifications: AppNotification[] = (userNotifications ?? []).map((n) => ({
-    id: n.id,
-    type: n.type,
-    title: n.title,
-    body: n.body,
-    link: n.link ?? "/",
-    read: n.read,
-    createdAt: n.created_at,
-  }));
+  let notifications: AppNotification[] = [];
+  try {
+    const { data: userNotifications } = await supabase
+      .from("user_notifications")
+      .select("id, type, title, body, link, read, created_at")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false })
+      .limit(20);
+    notifications = (userNotifications ?? []).map((n) => ({
+      id: n.id,
+      type: n.type,
+      title: n.title,
+      body: n.body,
+      link: n.link ?? "/",
+      read: n.read,
+      createdAt: n.created_at,
+    }));
+  } catch { /* table may not exist yet */ }
 
   return (
     <AppShell user={(appUser as AppUser) ?? nullUser(user.email ?? "")} notifications={notifications}>
