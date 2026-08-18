@@ -68,7 +68,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   } catch { /* table may not exist yet */ }
 
   return (
-    <AppShell user={(appUser as AppUser) ?? nullUser(user.email ?? "")} notifications={notifications}>
+    <AppShell user={(appUser as unknown as AppUser) ?? nullUser(user.email ?? "")} notifications={notifications}>
       {children}
     </AppShell>
   );
