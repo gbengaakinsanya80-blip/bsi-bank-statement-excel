@@ -178,11 +178,11 @@ export function TransactionsTable({ rows, exporting, onExport, editable, onApply
         </div>
       </div>
       <div className="overflow-x-auto rounded-xl border bg-card">
-        <Table>
+        <Table className="[&_td]:border-r [&_td:last-child]:border-r-0 [&_th]:border-r [&_th:last-child]:border-r-0 [&_td]:border-border/70 [&_th]:border-border/70">
           <TableHeader>
             <TableRow className="bg-muted/50">
-              <TableHead><SortHeader label="Date" k="date" /></TableHead>
-              {editable && <TableHead>Value Date</TableHead>}
+              <TableHead className="w-[120px]"><SortHeader label="Date" k="date" /></TableHead>
+              {editable && <TableHead className="w-[120px]">Value Date</TableHead>}
               <TableHead className={editable ? "w-[30%]" : "w-[34%]"}>Description</TableHead>
               {!editable && <TableHead>Reference</TableHead>}
               <TableHead>Category</TableHead>
