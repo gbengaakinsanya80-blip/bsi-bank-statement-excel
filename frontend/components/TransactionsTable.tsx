@@ -178,12 +178,12 @@ export function TransactionsTable({ rows, exporting, onExport, editable, onApply
         </div>
       </div>
       <div className="overflow-x-auto rounded-xl border bg-card">
-        <Table className="[&_td]:border-r [&_td:last-child]:border-r-0 [&_th]:border-r [&_th:last-child]:border-r-0 [&_td]:border-border/70 [&_th]:border-border/70">
+        <Table className="bsi-table">
           <TableHeader>
             <TableRow className="bg-muted/50">
               <TableHead className="w-[120px]"><SortHeader label="Date" k="date" /></TableHead>
               {editable && <TableHead className="w-[120px]">Value Date</TableHead>}
-              <TableHead className={editable ? "w-[30%]" : "w-[34%]"}>Description</TableHead>
+              <TableHead className={cn("bsi-divider-l", editable ? "w-[30%]" : "w-[34%]")}>Description</TableHead>
               {!editable && <TableHead>Reference</TableHead>}
               <TableHead>Category</TableHead>
               <TableHead className="text-right"><SortHeader label="Debit" k="debit" /></TableHead>
@@ -222,7 +222,7 @@ export function TransactionsTable({ rows, exporting, onExport, editable, onApply
                       {formatDate(row.value_date)}
                     </TableCell>
                   )}
-                  <TableCell className="max-w-[340px]">
+                  <TableCell className="bsi-divider-l max-w-[340px]">
                     {editable && !row.is_beginning_balance && !row.is_ending_balance ? (
                       <input
                         type="text"

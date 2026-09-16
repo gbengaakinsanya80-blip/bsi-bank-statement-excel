@@ -407,11 +407,11 @@ function ReviewTable({
   return (
     <div>
       {err && <p className="mb-2 text-sm text-destructive">{err}</p>}
-      <Table>
+      <Table className="bsi-table">
         <TableHeader>
           <TableRow>
             <TableHead>Date</TableHead>
-            <TableHead>Description</TableHead>
+            <TableHead className="bsi-divider-l">Description</TableHead>
             <TableHead className="text-right">Debit</TableHead>
             <TableHead className="text-right">Credit</TableHead>
             <TableHead>Account</TableHead>

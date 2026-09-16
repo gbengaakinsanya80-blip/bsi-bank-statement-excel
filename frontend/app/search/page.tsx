@@ -144,12 +144,12 @@ export default function SearchPage() {
       )}
 
       <div className="rounded-xl border bg-card">
-        <Table>
+        <Table className="bsi-table">
           <TableHeader>
             <TableRow className="bg-muted/50">
               <TableHead>Source</TableHead>
               <TableHead>Date</TableHead>
-              <TableHead>Description</TableHead>
+              <TableHead className="bsi-divider-l">Description</TableHead>
               <TableHead>Reference</TableHead>
               <TableHead>Category</TableHead>
               <TableHead className="text-right">Debit</TableHead>
@@ -164,7 +164,7 @@ export default function SearchPage() {
                   {row.filename ?? row.job_id}
                 </TableCell>
                 <TableCell className="whitespace-nowrap tabular-nums">{row.tx_date ?? "—"}</TableCell>
-                <TableCell className="max-w-[300px]">
+                <TableCell className="bsi-divider-l max-w-[300px]">
                   <span className="line-clamp-2">{row.description || "—"}</span>
                 </TableCell>
                 <TableCell className="max-w-[120px] truncate text-xs text-muted-foreground">{row.reference || "—"}</TableCell>

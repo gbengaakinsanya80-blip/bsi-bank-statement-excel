@@ -70,6 +70,25 @@
   background: transparent;
 }
 
+@layer components {
+  /* Visible column dividers for the results tables. Plain CSS so the
+     boundaries render reliably in both themes regardless of Tailwind's
+     class detection (arbitrary-variant borders were silently dropped). */
+  .bsi-table th,
+  .bsi-table td {
+    border-right: 1px solid hsl(var(--border) / 0.9);
+  }
+  .bsi-table th:last-child,
+  .bsi-table td:last-child {
+    border-right: 0;
+  }
+  /* Emphasised column boundary (used on the Description column) so the split
+     from the column to its left — i.e. Date — is unmistakable. */
+  .bsi-divider-l {
+    border-left: 2px solid hsl(var(--primary) / 0.45);
+  }
+}
+
 @layer utilities {
   .bg-grid {
     background-image:

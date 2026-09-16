@@ -324,12 +324,12 @@ function JournalsTable({
   return (
     <Card>
       <CardContent className="p-0">
-        <Table>
+        <Table className="bsi-table">
           <TableHeader>
             <TableRow>
               <TableHead>Journal No</TableHead>
               <TableHead>Date</TableHead>
-              <TableHead>Description</TableHead>
+              <TableHead className="bsi-divider-l">Description</TableHead>
               <TableHead>Source</TableHead>
               <TableHead className="text-right">Lines</TableHead>
               <TableHead className="text-right">Debit</TableHead>
